@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeGuard Dashboard</title>
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --panel: rgba(255, 255, 255, 0.04);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --text: #e8ecf5;
+    --muted: #7d879c;
+    --green: #22c55e;
+    --yellow: #facc15;
+    --red: #ef4444;
+    --accent: #7c8cff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Noto Sans Thai", "Sarabun", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(900px 500px at 10% -10%, rgba(124, 140, 255, 0.18), transparent 60%),
+      radial-gradient(700px 450px at 110% 10%, rgba(34, 197, 94, 0.12), transparent 60%),
+      var(--bg);
+    padding: 24px 16px 48px;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #7c8cff, #22c55e);
+    box-shadow: 0 8px 24px rgba(124, 140, 255, 0.35);
+    font-size: 22px;
+  }
+  h1 { margin: 0; font-size: 26px; letter-spacing: 0.3px; }
+  .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+  button#btn {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0b0f1a;
+    background: linear-gradient(135deg, #a5b4ff, #7c8cff);
+    box-shadow: 0 6px 20px rgba(124, 140, 255, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+  }
+  button#btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(124, 140, 255, 0.45); }
+  button#btn:active { transform: translateY(0); }
+  button#btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+  /* ---------- Status hero ---------- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 20px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: var(--glow, transparent);
+    opacity: 0.25;
+    transition: background 0.4s ease;
+    pointer-events: none;
+  }
+  .orb {
+    position: relative;
+    flex: 0 0 auto;
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: var(--tone, #475069);
+    box-shadow: 0 0 0 0 var(--tone, #475069);
+    animation: pulse 2s infinite;
+    transition: background 0.4s ease;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone, #475069) 60%, transparent); }
+    70%  { box-shadow: 0 0 0 22px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  .hero-text { position: relative; min-width: 0; }
+  .hero-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  #status {
+    font-size: 30px;
+    font-weight: 700;
+    margin-top: 4px;
+    color: var(--tone, var(--text));
+    transition: color 0.4s ease;
+  }
+  #status.GREEN  { --tone: var(--green);  --glow: linear-gradient(120deg, var(--green), transparent); }
+  #status.YELLOW { --tone: var(--yellow); --glow: linear-gradient(120deg, var(--yellow), transparent); }
+  #status.RED    { --tone: var(--red);    --glow: linear-gradient(120deg, var(--red), transparent); }
+  .hero.GREEN  { --tone: var(--green);  --glow: linear-gradient(120deg, var(--green), transparent); }
+  .hero.YELLOW { --tone: var(--yellow); --glow: linear-gradient(120deg, var(--yellow), transparent); }
+  .hero.RED    { --tone: var(--red);    --glow: linear-gradient(120deg, var(--red), transparent); }
+  .hero.RED .orb { animation: alarm 0.8s infinite; }
+  @keyframes alarm {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.08); }
+  }
+
+  .conn {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 10px; font-size: 13px; color: var(--muted);
+  }
+  .conn i {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); display: inline-block;
+  }
+  .conn.on i { background: var(--green); box-shadow: 0 0 10px var(--green); }
+
+  /* ---------- Metric grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .card {
+    position: relative;
+    padding: 18px;
+    border-radius: 16px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .card:hover { transform: translateY(-2px); border-color: rgba(124, 140, 255, 0.35); }
+  .card .icon { font-size: 20px; margin-bottom: 8px; }
+  .card .name { font-size: 13px; color: var(--muted); }
+  .card .value {
+    font-size: 34px;
+    font-weight: 700;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+  }
+  .card .unit { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .bar {
+    margin-top: 12px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+  }
+  .bar > span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7c8cff, #a5b4ff);
+    transition: width 0.4s ease;
+  }
+
+  .card.wide { grid-column: span 2; }
+  @media (max-width: 560px) { .card.wide { grid-column: span 1; } }
+
+  .reason-value {
+    font-size: 20px !important;
+    line-height: 1.4;
+    min-height: 34px;
+  }
+
+  /* ---------- Log ---------- */
+  .panel {
+    border-radius: 16px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--panel-border);
+    font-size: 14px; color: var(--muted);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.12); }
+  pre#log {
+    margin: 0;
+    padding: 14px 18px;
+    height: 220px;
+    overflow: auto;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #a9b4cc;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  pre#log:empty::before {
+    content: "รอข้อมูลจาก ESP32...";
+    color: var(--muted);
+  }
+
+  footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  @media (max-width: 480px) {
+    #status { font-size: 24px; }
+    .card .value { font-size: 28px; }
+    .hero { padding: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="brand">
+      <div class="logo">🛡️</div>
+      <div>
+        <h1>VibeGuard</h1>
+        <p class="subtitle">ระบบเฝ้าระวังเครื่องจักรแบบเรียลไทม์</p>
+      </div>
+    </div>
+    <button id="btn">เชื่อมต่อ ESP32</button>
+  </header>
+
+  <section id="hero" class="hero GREEN">
+    <div class="orb"></div>
+    <div class="hero-text">
+      <div class="hero-label">Machine Status</div>
+      <div id="status" class="GREEN">ยังไม่เชื่อมต่อ</div>
+      <div class="conn" id="conn"><i></i><span>ออฟไลน์</span></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="icon">⚙️</div>
+      <div class="name">รอบหมุน</div>
+      <div class="value"><span id="rpm">-</span><span class="unit">RPM</span></div>
+      <div class="bar"><span id="rpmBar"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="icon">⚡</div>
+      <div class="name">กระแส</div>
+      <div class="value"><span id="cur">-</span><span class="unit">A</span></div>
+      <div class="bar"><span id="curBar"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="icon">🌡️</div>
+      <div class="name">อุณหภูมิมอเตอร์</div>
+      <div class="value"><span id="motC">-</span><span class="unit">°C</span></div>
+      <div class="bar"><span id="motBar"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="icon">📳</div>
+      <div class="name">การสั่น</div>
+      <div class="value"><span id="acc">-</span><span class="unit">m/s²</span></div>
+      <div class="bar"><span id="accBar"></span></div>
+    </div>
+
+    <div class="card wide">
+      <div class="icon">🔎</div>
+      <div class="name">สาเหตุ</div>
+      <div class="value reason-value" id="reason">-</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span>ข้อมูลดิบจากเซนเซอร์</span>
+      <div class="dots"><span></span><span></span><span></span></div>
+    </div>
+    <pre id="log"></pre>
+  </section>
+
+  <footer>VibeGuard · ESP32 Predictive Maintenance</footer>
+</div>
+
+<script>
+const BAUD = 115200;   // ต้องตรงกับ Serial.begin() ในเฟิร์มแวร์
+
+// ขอบเขตสำหรับแสดงแถบความคืบหน้า (ปรับตามเครื่องจริง)
+const RANGE = {
+  rpm:  { max: 3000 },
+  cur:  { max: 20 },
+  motC: { min: 20, max: 100 },
+  acc:  { max: 10 },
+};
+
+const btn = document.getElementById('btn');
+btn.onclick = connect;
+
+function setConnected(on) {
+  document.getElementById('conn').classList.toggle('on', on);
+  document.querySelector('#conn span').textContent = on ? 'เชื่อมต่อแล้ว' : 'ออฟไลน์';
+  btn.textContent = on ? 'เชื่อมต่อแล้ว ✓' : 'เชื่อมต่อ ESP32';
+  btn.disabled = on;
+}
+
+function setBar(id, value, min, max) {
+  const pct = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+  document.getElementById(id).style.width = pct + '%';
+}
+
+async function connect() {
+  if (!('serial' in navigator)) {
+    alert('ต้องใช้ Chrome หรือ Edge บนคอมพิวเตอร์');
+    return;
+  }
+  try {
+    const port = await navigator.serial.requestPort();
+    await port.open({ baudRate: BAUD });
+    setConnected(true);
+
+    const decoder = new TextDecoderStream();
+    port.readable.pipeTo(decoder.writable);
+    const reader = decoder.readable.getReader();
+
+    let buf = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        handleLine(line);
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setConnected(false);
+  }
+}
+
+function handleLine(line) {
+  // ข้ามบรรทัดข้อความ (#...) และบรรทัดหัวตาราง
+  if (!line || line[0] === '#' || line.startsWith('ms,')) return;
+
+  const f = line.split(',');
+  if (f.length < 18) return;
+
+  // ลำดับคอลัมน์ตามเอกสาร: 1=accRms 6=rpm 7=currentA 8=motorC 16=status 17=reason
+  const status = f[16];
+
+  document.getElementById('acc').textContent  = f[1];
+  document.getElementById('rpm').textContent  = f[6];
+  document.getElementById('cur').textContent  = f[7];
+  document.getElementById('motC').textContent = f[8];
+  document.getElementById('reason').textContent = f[17];
+
+  setBar('accBar', +f[1], 0, RANGE.acc.max);
+  setBar('rpmBar', +f[6], 0, RANGE.rpm.max);
+  setBar('curBar', +f[7], 0, RANGE.cur.max);
+  setBar('motBar', +f[8], RANGE.motC.min, RANGE.motC.max);
+
+  const hero = document.getElementById('hero');
+  const el = document.getElementById('status');
+  hero.className = 'hero ' + status;
+  el.className = status;
+  el.textContent = 'สถานะ: ' + status;
+
+  const log = document.getElementById('log');
+  log.textContent = line + '\n' + log.textContent.slice(0, 2000);
+}
+</script>
+</body>
+</html>
