@@ -80,6 +80,11 @@
   .badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #0b0f1a; background: var(--muted); }
   .badge.ok { background: var(--green); } .badge.bad { background: var(--red); color: #fff; }
 
+  .learn { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+  .learn > div { flex: 1; min-width: 240px; }
+  .learn b { font-size: 16px; }
+  .lbar { margin-top: 10px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; }
+  .lbar span { display: block; height: 100%; width: 0; background: var(--blue); transition: width .3s; }
   .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .tools .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
   .panel { border-radius: 16px; background: var(--panel); border: 1px solid var(--border); overflow: hidden; }
@@ -135,6 +140,14 @@
   </div>
 
   <h2>คำสั่งไปที่ ESP32</h2>
+  <div class="card learn">
+    <div>
+      <b>ตอนนี้เครื่องทำงานปกติใช่ไหม?</b>
+      <div class="name">กดแล้วให้เครื่องหมุนค้างไว้ ~30 วินาที ระบบจะจำค่านี้เป็น "ค่าปกติ" ของรอบนี้ (เก็บได้ 3 รอบ เลือกช่องให้เอง)</div>
+      <div class="lbar"><span id="lfill"></span></div>
+    </div>
+    <button id="btnNormal" class="primary" data-cmd="n">✓ ตอนนี้เครื่องปกติ</button>
+  </div>
   <div class="tools">
     <button data-cmd="b1">เก็บ baseline 1</button>
     <button data-cmd="b2">เก็บ baseline 2</button>
@@ -304,12 +317,21 @@ function handleLine(line) {
   const st = STATUS[d.status] || { th: d.status, tone: 'var(--gray)' };
   const hero = $('hero'); hero.className = 'hero ' + d.status; hero.style.setProperty('--tone', st.tone);
   $('status').textContent = st.th;
-  $('reason').textContent = d.status === 'LEARNING' ? 'ให้เครื่องหมุนปกติค้างไว้ ~30 วินาที'
+  const lm = /^learn(\d)-(\d+)\/(\d+)$/.exec(d.reason || '');
+  $('lfill').style.width = lm ? (lm[2] / lm[3] * 100) + '%' : '0';
+  $('btnNormal').textContent = lm ? `กำลังเก็บค่าปกติ ช่อง ${lm[1]} · ${Math.round(lm[2] / lm[3] * 100)}%` : '✓ ตอนนี้เครื่องปกติ';
+  $('reason').textContent = d.status === 'LEARNING' ? (lm ? `กำลังเก็บค่าปกติลงช่อง ${lm[1]} (${lm[2]}/${lm[3]}) ให้เครื่องหมุนค้างไว้` : 'ให้เครื่องหมุนปกติค้างไว้ ~30 วินาที')
                          : d.status === 'NO-BASELINE' ? 'กดเก็บ baseline ที่รอบปัจจุบันก่อน'
                          : (REASON[d.reason] || d.reason);
   $('slot').textContent = 'baseline: ' + (d.slot > 0 ? 'ช่อง ' + d.slot : 'ยังไม่มี');
   $('last').textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH');
 
+  if (lastStatus === 'LEARNING' && d.status !== 'LEARNING') {
+    const li = document.createElement('li');
+    li.textContent = `${new Date().toLocaleTimeString('th-TH')} · บันทึกค่าปกติแล้ว (ช่อง ${d.slot}) ที่ ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM`;
+    li.style.color = 'var(--blue)';
+    $('events').prepend(li);
+  }
   if (d.status !== lastStatus && (d.status === 'YELLOW' || d.status === 'RED' || lastStatus === 'YELLOW' || lastStatus === 'RED')) {
     const li = document.createElement('li');
     li.textContent = `${new Date().toLocaleTimeString('th-TH')} · ${st.th} · ${REASON[d.reason] || d.reason} · ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM · ${Number.isNaN(d.cur) ? '-' : d.cur.toFixed(2)} A`;
