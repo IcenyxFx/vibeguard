@@ -3,216 +3,259 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VibeGuard Dashboard</title>
+<title>VibeGuard 3D</title>
 <!--
-  VibeGuard Dashboard (Web Serial) — ใช้คู่กับเฟิร์มแวร์ VibeGuard_v2.ino
-  วิธีใช้: เปิดไฟล์นี้ใน Chrome หรือ Edge บนคอม → กด "เชื่อมต่อ ESP32" → เลือกพอร์ตของบอร์ด
-  ปิด Serial Monitor ของ Arduino IDE ก่อน (พอร์ตใช้ได้ทีละโปรแกรม)
-  ลำดับคอลัมน์ CSV จาก VibeGuard_v2:
-  0 ms | 1 accRms | 2 axialRms | 3 radialRms | 4 gyroRms | 5 swRate | 6 rpm | 7 currentA | 8 motorC
-  9 ambC | 10 hum | 11 slot | 12 zAcc | 13 zGyro | 14 zCur | 15 tempRise | 16 status | 17 reason
+  VibeGuard Dashboard 3D (Web Serial)
+  - เปิดไฟล์นี้ใน Chrome หรือ Edge บนคอม → กด "เชื่อมต่อ ESP32" → เลือกพอร์ตของบอร์ด
+  - ปิด Serial Monitor ของ Arduino IDE ก่อน (พอร์ตใช้ได้ทีละโปรแกรม)
+  - อ่านได้ทั้ง 2 เฟิร์มแวร์ (รู้เองอัตโนมัติ):
+      VibeGuard_v2.ino  : ms,accRms,axialRms,radialRms,gyroRms,swRate,rpm,currentA,motorC,ambC,hum,slot,zAcc,zGyro,zCur,tempRise,status,reason
+      VibeGuard_web.ino : ms,accRms,airC,hum,knock,tcrtTotal,rpm,currentA,motorC,dhtOk,mpuOk,dsOk,acsOk,tcrtD0,swD0,acsZeroMv,status,reason
+  - ปุ่ม "โหมดสาธิต" = ข้อมูลจำลอง ใช้ซ้อมพรีเซนต์/อัดวิดีโอได้โดยไม่ต้องต่อบอร์ด
+  - ภาพ 3 มิติวาดด้วย WebGL ล้วน ไม่ต้องโหลดไลบรารี ใช้ได้แม้ไม่มีเน็ต
 -->
 <style>
   :root {
-    --bg: #0b0f1a; --panel: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+    --bg: #070b14; --panel: rgba(16,22,38,0.78); --panel2: rgba(255,255,255,0.035); --border: rgba(255,255,255,0.09);
     --text: #e8ecf5; --muted: #8b95aa; --green: #22c55e; --yellow: #facc15; --red: #ef4444;
-    --blue: #60a5fa; --gray: #64748b; --accent: #7c8cff;
+    --blue: #60a5fa; --gray: #64748b; --accent: #7c8cff; --tone: var(--gray);
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; color: var(--text); padding: 24px 16px 48px;
-    font-family: "Noto Sans Thai", "Sarabun", "Segoe UI", system-ui, sans-serif;
-    background:
-      radial-gradient(900px 500px at 10% -10%, rgba(124,140,255,0.16), transparent 60%),
-      radial-gradient(700px 450px at 110% 10%, rgba(34,197,94,0.10), transparent 60%), var(--bg);
-  }
-  .container { max-width: 1080px; margin: 0 auto; }
-  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .logo { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
-          background: linear-gradient(135deg, #7c8cff, #22c55e); }
-  h1 { margin: 0; font-size: 26px; }
-  .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  html, body { margin: 0; height: 100%; }
+  body { color: var(--text); background: var(--bg); font-family: "Noto Sans Thai", "Sarabun", "Segoe UI", system-ui, sans-serif; }
   button { appearance: none; border: 1px solid var(--border); cursor: pointer; font: inherit; color: var(--text);
-           background: var(--panel); border-radius: 999px; padding: 8px 14px; font-size: 14px; }
-  button:hover:not(:disabled) { border-color: rgba(124,140,255,0.5); }
-  button:disabled { opacity: 0.45; cursor: default; }
-  button.primary { border: none; padding: 12px 20px; font-weight: 600; color: #0b0f1a;
-                   background: linear-gradient(135deg, #a5b4ff, #7c8cff); }
+           background: var(--panel2); border-radius: 999px; padding: 7px 13px; font-size: 13px; white-space: nowrap; }
+  button:hover:not(:disabled) { border-color: rgba(124,140,255,0.55); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.primary { border: none; padding: 9px 16px; font-weight: 600; color: #0b0f1a; background: linear-gradient(135deg, #a5b4ff, #7c8cff); }
+  button.on { background: rgba(124,140,255,0.22); border-color: rgba(124,140,255,0.6); }
 
-  .hero { position: relative; overflow: hidden; border-radius: 20px; padding: 24px; margin-bottom: 16px;
-          background: var(--panel); border: 1px solid var(--border); display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-  .hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.22;
-                  background: linear-gradient(120deg, var(--tone), transparent); }
-  .hero { --tone: var(--gray); }
-  .orb { position: relative; flex: 0 0 auto; width: 64px; height: 64px; border-radius: 50%; background: var(--tone); }
-  .hero.RED .orb { animation: alarm 0.8s infinite; }
-  @keyframes alarm { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-  .hero-text { position: relative; flex: 1; min-width: 220px; }
-  .hero-label { font-size: 12px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
-  #status { font-size: 28px; font-weight: 700; margin-top: 4px; color: var(--tone); }
-  #reason { font-size: 16px; color: var(--text); margin-top: 4px; }
-  .meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 10px; }
-  .conn { display: inline-flex; align-items: center; gap: 8px; }
+  .app { display: grid; grid-template-columns: 1fr 380px; grid-template-rows: auto 1fr; height: 100vh; }
+  header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+           padding: 10px 16px; border-bottom: 1px solid var(--border); background: rgba(7,11,20,0.9); }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; background: linear-gradient(135deg, #7c8cff, #22c55e); }
+  h1 { margin: 0; font-size: 19px; } .subtitle { margin: 0; color: var(--muted); font-size: 12px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+  /* ===== ฉาก 3 มิติ ===== */
+  .stage { position: relative; overflow: hidden; min-height: 300px;
+           background: radial-gradient(800px 500px at 50% 30%, #131c33 0%, #070b14 70%); }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #gl:active { cursor: grabbing; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .tag { position: absolute; left: 0; top: 0; transform: translate(-50%, calc(-100% - 14px)); pointer-events: auto; cursor: pointer;
+         padding: 5px 10px 6px; border-radius: 10px; background: rgba(10,14,26,0.82); border: 1px solid var(--border);
+         backdrop-filter: blur(6px); font-size: 12px; line-height: 1.25; white-space: nowrap; transition: border-color .2s, opacity .2s; }
+  .tag::after { content: ""; position: absolute; left: 50%; bottom: -14px; width: 1px; height: 14px; background: rgba(255,255,255,0.35); }
+  .tag::before { content: ""; position: absolute; left: calc(50% - 3px); bottom: -17px; width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted)); }
+  .tag .tn { color: var(--muted); font-size: 11px; display: flex; align-items: center; gap: 6px; }
+  .tag .tn i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted)); }
+  .tag .tv { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .tag .tv small { font-weight: 500; color: var(--muted); font-size: 11px; margin-left: 3px; }
+  .tag.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .tag.bad { --dot: var(--red); } .tag.ok { --dot: var(--green); }
+  .tag.hidden { opacity: 0; pointer-events: none; }
+  .ov { position: absolute; display: flex; gap: 6px; flex-wrap: wrap; }
+  .ov.tl { left: 14px; top: 14px; flex-direction: column; align-items: flex-start; }
+  .ov.tr { right: 14px; top: 14px; justify-content: flex-end; max-width: 60%; }
+  .ov.bl { left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); }
+  .ov.bc { left: 50%; bottom: 44px; transform: translateX(-50%); justify-content: center; background: rgba(10,14,26,0.8);
+           border: 1px solid var(--border); border-radius: 999px; padding: 6px; align-items: center; }
+  .ov.bc span { font-size: 12px; color: var(--muted); padding: 0 6px; }
+  .ov button { background: rgba(10,14,26,0.75); backdrop-filter: blur(6px); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px; border-radius: 999px;
+          background: rgba(10,14,26,0.82); border: 1px solid var(--tone); backdrop-filter: blur(6px); }
+  .pill i { width: 14px; height: 14px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 14px var(--tone); }
+  .pill b { font-size: 18px; color: var(--tone); }
+  .RED .pill i { animation: alarm .8s infinite; }
+  @keyframes alarm { 0%,100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+  .rpmnote { font-size: 11px; color: var(--muted); background: rgba(10,14,26,0.7); padding: 3px 8px; border-radius: 6px; }
+
+  /* ===== แผงขวา ===== */
+  aside { overflow-y: auto; border-left: 1px solid var(--border); background: rgba(9,13,24,0.96); padding: 14px 14px 30px; }
+  h2 { font-size: 12px; color: var(--muted); font-weight: 600; margin: 18px 0 8px; letter-spacing: .3px; }
+  .hero { position: relative; overflow: hidden; border-radius: 16px; padding: 16px; background: var(--panel2); border: 1px solid var(--border); }
+  .hero::before { content: ""; position: absolute; inset: 0; opacity: 0.2; background: linear-gradient(120deg, var(--tone), transparent 70%); pointer-events: none; }
+  .hero > * { position: relative; }
+  .hero-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  #status { font-size: 24px; font-weight: 700; margin-top: 2px; color: var(--tone); }
+  #reason { font-size: 14px; margin-top: 2px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .conn { display: inline-flex; align-items: center; gap: 6px; }
   .conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .conn.on i { background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .conn.on i { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .conn.demo i { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
 
-  h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin: 22px 0 10px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
-  .card { padding: 14px 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--border); }
-  .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .name { font-size: 13px; color: var(--muted); }
-  .value { font-size: 30px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .unit { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
-  .spark { width: 100%; height: 40px; margin-top: 6px; display: block; }
+  .card { padding: 12px 14px; border-radius: 14px; background: var(--panel2); border: 1px solid var(--border); }
+  .learn b { font-size: 14px; } .learn .name { margin-top: 2px; }
+  .learn button { width: 100%; margin-top: 10px; }
+  .lbar { margin-top: 8px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; }
+  .lbar span { display: block; height: 100%; width: 0; background: var(--blue); transition: width .3s; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sc { padding: 10px 12px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
+  .sc:hover { border-color: rgba(124,140,255,0.4); } .sc.sel { border-color: var(--accent); }
+  .sc .name { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 4px; }
+  .name { font-size: 12px; color: var(--muted); }
+  .sc .value { font-size: 20px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .unit { font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+  .spark { width: 100%; height: 26px; margin-top: 4px; display: block; }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
-  .zrow { display: grid; grid-template-columns: 120px 1fr 56px; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; }
-  .ztrack { position: relative; height: 10px; border-radius: 999px; background: rgba(255,255,255,0.07); }
+  .zrow { display: grid; grid-template-columns: 82px 1fr 44px; align-items: center; gap: 8px; margin: 7px 0; font-size: 13px; }
+  .ztrack { position: relative; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.07); }
   .zfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--green); width: 0; transition: width .3s; }
   .zmark { position: absolute; top: -4px; bottom: -4px; width: 2px; }
   .zmark.y { background: var(--yellow); left: 37.5%; } .zmark.r { background: var(--red); left: 75%; }
   .znum { text-align: right; font-variant-numeric: tabular-nums; }
+  #znote { font-size: 12px; color: var(--muted); display: none; }
 
-  .health { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-  .chip { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px;
-          background: var(--panel); border: 1px solid var(--border); font-size: 14px; }
-  .badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #0b0f1a; background: var(--muted); }
-  .badge.ok { background: var(--green); } .badge.bad { background: var(--red); color: #fff; }
+  .cmds { display: flex; flex-wrap: wrap; gap: 6px; }
+  .panel { border-radius: 14px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; }
+  .panel-head { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+  pre { margin: 0; padding: 10px 14px; height: 170px; overflow: auto; font: 11px/1.6 ui-monospace, Menlo, Consolas, monospace; color: #a9b4cc; white-space: pre-wrap; word-break: break-all; }
+  #events { margin: 0; padding: 2px 14px; max-height: 170px; overflow: auto; }
+  #events li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; list-style: none; }
+  #events:empty::before { content: "ยังไม่มีการแจ้งเตือน"; color: var(--muted); font-size: 13px; display: block; padding: 8px 0; }
+  footer { margin-top: 18px; text-align: center; font-size: 11px; color: var(--muted); }
 
-  .learn { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
-  .learn > div { flex: 1; min-width: 240px; }
-  .learn b { font-size: 16px; }
-  .lbar { margin-top: 10px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; }
-  .lbar span { display: block; height: 100%; width: 0; background: var(--blue); transition: width .3s; }
-  .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .tools .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
-  .panel { border-radius: 16px; background: var(--panel); border: 1px solid var(--border); overflow: hidden; }
-  .panel-head { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted);
-                display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  pre { margin: 0; padding: 12px 16px; height: 220px; overflow: auto; font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace;
-        color: #a9b4cc; white-space: pre-wrap; word-break: break-all; }
-  #events li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; list-style: none; }
-  #events { margin: 0; padding: 4px 16px; max-height: 220px; overflow: auto; }
-  #events:empty::before { content: "ยังไม่มีการแจ้งเตือน"; color: var(--muted); font-size: 14px; display: block; padding: 8px 0; }
-  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
-  footer { margin-top: 24px; text-align: center; font-size: 12px; color: var(--muted); }
-  @media (max-width: 480px) { #status { font-size: 22px; } .value { font-size: 26px; } .zrow { grid-template-columns: 90px 1fr 48px; } }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto 56vh auto; height: auto; }
+    aside { border-left: none; border-top: 1px solid var(--border); overflow: visible; }
+    .app { grid-template-rows: auto 62vh auto; }
+    .ov.tr { max-width: none; left: 10px; right: 10px; top: auto; bottom: 10px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; }
+    .ov.bl, .rpmnote, .ov.bc span { display: none; }
+    .ov.bc { bottom: 54px; left: 10px; right: 10px; transform: none; flex-wrap: nowrap; overflow-x: auto; border-radius: 14px; justify-content: flex-start; }
+    .tag { padding: 3px 7px 4px; } .tag .tn { font-size: 10px; } .tag .tv { font-size: 12px; }
+    .pill b { font-size: 15px; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-
+<div class="app">
   <header>
     <div class="brand">
       <div class="logo">🛡️</div>
-      <div><h1>VibeGuard</h1><p class="subtitle">ระบบเฝ้าระวังเครื่องจักรแบบเรียลไทม์</p></div>
+      <div><h1>VibeGuard 3D</h1><p class="subtitle">ระบบเฝ้าระวังเครื่องจักรแบบเรียลไทม์</p></div>
     </div>
     <div class="tools">
+      <button id="btnDemo">▶ โหมดสาธิต</button>
       <button id="btnReset" disabled>รีเซ็ตบอร์ด</button>
       <button id="btnConnect" class="primary">เชื่อมต่อ ESP32</button>
     </div>
   </header>
 
-  <section id="hero" class="hero">
-    <div class="orb"></div>
-    <div class="hero-text">
+  <section class="stage" id="stage">
+    <canvas id="gl"></canvas>
+    <div id="labels"></div>
+    <div class="ov tl">
+      <div class="pill" id="pill"><i></i><b id="pillText">ยังไม่เชื่อมต่อ</b></div>
+      <span class="rpmnote" id="rpmnote">ภาพจานหมุนช้ากว่าจริง 15 เท่า ให้ตาเห็นทัน</span>
+    </div>
+    <div class="ov tr">
+      <button data-view="iso" class="on">มุมเฉียง</button>
+      <button data-view="front">ด้านหน้า</button>
+      <button data-view="side">ด้านข้าง</button>
+      <button data-view="top">ด้านบน</button>
+      <button id="btnSpin">หมุนรอบ</button>
+      <button id="btnLabels" class="on">ป้ายค่า</button>
+    </div>
+    <div class="ov bl">ลากเพื่อหมุน · เลื่อนลูกกลิ้งเพื่อซูม · กดป้ายเพื่อซูมเข้าเซนเซอร์</div>
+    <div class="ov bc" id="scen" hidden>
+      <span>จำลองอาการ</span>
+      <button data-sc="normal" class="on">ปกติ</button>
+      <button data-sc="unbalance">ไม่สมดุล</button>
+      <button data-sc="loose">น็อตหลวม</button>
+      <button data-sc="friction">ฝืด</button>
+      <button data-sc="hot">ร้อนเกิน</button>
+    </div>
+  </section>
+
+  <aside>
+    <section id="hero" class="hero">
       <div class="hero-label">Machine Status</div>
       <div id="status">ยังไม่เชื่อมต่อ</div>
       <div id="reason">กด "เชื่อมต่อ ESP32" แล้วเลือกพอร์ตของบอร์ด</div>
       <div class="meta">
         <span class="conn" id="conn"><i></i><span>ออฟไลน์</span></span>
         <span id="slot">baseline: -</span>
+        <span id="fmt">เฟิร์มแวร์: -</span>
         <span id="last">-</span>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <h2>ค่าเซนเซอร์</h2>
-  <section class="grid" id="cards"></section>
-
-  <div class="two">
-    <div>
-      <h2>ห่างจากค่าปกติ (z-score) · ขีดเหลือง = 3 · ขีดแดง = 6</h2>
-      <div class="card" id="zbox"></div>
-    </div>
-    <div>
-      <h2>สถานะอุปกรณ์</h2>
-      <section class="health" id="health"></section>
-    </div>
-  </div>
-
-  <h2>คำสั่งไปที่ ESP32</h2>
-  <div class="card learn">
-    <div>
+    <h2>สอนค่าปกติ</h2>
+    <div class="card learn">
       <b>ตอนนี้เครื่องทำงานปกติใช่ไหม?</b>
-      <div class="name">กดแล้วให้เครื่องหมุนค้างไว้ ~30 วินาที ระบบจะจำค่านี้เป็น "ค่าปกติ" ของรอบนี้ (เก็บได้ 3 รอบ เลือกช่องให้เอง)</div>
+      <div class="name">กดแล้วให้เครื่องหมุนค้างไว้ ~30 วินาที ระบบจะจำค่านี้เป็น "ค่าปกติ" (เก็บได้ 3 รอบความเร็ว เลือกช่องให้เอง)</div>
       <div class="lbar"><span id="lfill"></span></div>
+      <button id="btnNormal" class="primary" data-cmd="n">✓ ตอนนี้เครื่องปกติ</button>
     </div>
-    <button id="btnNormal" class="primary" data-cmd="n">✓ ตอนนี้เครื่องปกติ</button>
-  </div>
-  <div class="tools">
-    <button data-cmd="b1">เก็บ baseline 1</button>
-    <button data-cmd="b2">เก็บ baseline 2</button>
-    <button data-cmd="b3">เก็บ baseline 3</button>
-    <button data-cmd="p">ดูตาราง baseline</button>
-    <button data-cmd="z">ตั้งศูนย์กระแส</button>
-    <button data-cmd="r" data-confirm="ลบ baseline ทั้งหมด?">ลบ baseline</button>
-    <span class="sep"></span>
-    <button id="btnRec">● เริ่มบันทึก CSV</button>
-    <button id="btnSave" disabled>ดาวน์โหลด CSV</button>
-    <span id="recInfo" class="name"></span>
-  </div>
 
-  <div class="two">
-    <div>
-      <h2>บันทึกการแจ้งเตือน</h2>
-      <div class="panel"><ul id="events"></ul></div>
-    </div>
-    <div>
-      <h2>ข้อความจาก ESP32</h2>
-      <div class="panel">
-        <div class="panel-head"><span>บรรทัดล่าสุดจาก Serial</span><span id="rate">-</span></div>
-        <pre id="log"></pre>
-      </div>
-    </div>
-  </div>
+    <h2>ค่าเซนเซอร์ · กดการ์ดเพื่อดูตำแหน่งบนแท่น</h2>
+    <section class="grid" id="cards"></section>
 
-  <footer>VibeGuard · ESP32 Predictive Maintenance · ใช้คู่กับ VibeGuard_v2.ino</footer>
+    <h2>ห่างจากค่าปกติ (z-score) · ขีดเหลือง = 3 · ขีดแดง = 6</h2>
+    <div class="card" id="zbox"></div>
+
+    <h2>คำสั่งไปที่ ESP32</h2>
+    <div class="cmds">
+      <button data-cmd="b1">เก็บ baseline 1</button>
+      <button data-cmd="b2">เก็บ baseline 2</button>
+      <button data-cmd="b3">เก็บ baseline 3</button>
+      <button data-cmd="p">ดูตาราง baseline</button>
+      <button data-cmd="z">ตั้งศูนย์กระแส</button>
+      <button data-cmd="r" data-confirm="ลบ baseline ทั้งหมด?">ลบ baseline</button>
+    </div>
+    <div class="cmds" style="margin-top:8px; align-items:center">
+      <button id="btnRec">● เริ่มบันทึก CSV</button>
+      <button id="btnSave" disabled>ดาวน์โหลด CSV</button>
+      <span id="recInfo" class="name"></span>
+    </div>
+
+    <h2>บันทึกการแจ้งเตือน</h2>
+    <div class="panel"><ul id="events"></ul></div>
+
+    <h2>ข้อความจาก ESP32</h2>
+    <div class="panel">
+      <div class="panel-head"><span>บรรทัดล่าสุดจาก Serial</span><span id="rate">-</span></div>
+      <pre id="log"></pre>
+    </div>
+    <footer>VibeGuard · ESP32 Predictive Maintenance · ใช้กับ VibeGuard_v2.ino หรือ VibeGuard_web.ino</footer>
+  </aside>
 </div>
 
 <script>
-// ===== ตั้งค่า =====
-const BAUD = 115200;     // ต้องตรงกับ Serial.begin() ในเฟิร์มแวร์
-const HISTORY = 90;      // จุดกราฟย้อนหลัง (~1 นาที ที่ 0.64 วินาที/บรรทัด)
-const HEADER = 'ms,accRms,axialRms,radialRms,gyroRms,swRate,rpm,currentA,motorC,ambC,hum,slot,zAcc,zGyro,zCur,tempRise,status,reason';
+// =====================================================================
+//  ส่วนที่ 1: ข้อมูล / การเชื่อมต่อ (เหมือนหน้าเว็บเดิม + อ่านได้ 2 รูปแบบ)
+// =====================================================================
+const BAUD = 115200;
+const HISTORY = 90;
+const HEADER_V2  = 'ms,accRms,axialRms,radialRms,gyroRms,swRate,rpm,currentA,motorC,ambC,hum,slot,zAcc,zGyro,zCur,tempRise,status,reason';
+const HEADER_WEB = 'ms,accRms,airC,hum,knock,tcrtTotal,rpm,currentA,motorC,dhtOk,mpuOk,dsOk,acsOk,tcrtD0,swD0,acsZeroMv,status,reason';
+const C2 = { acc:1, axial:2, radial:3, gyro:4, sw:5, rpm:6, cur:7, motC:8, ambC:9, hum:10, slot:11, zAcc:12, zGyro:13, zCur:14, rise:15 };
 
-// ===== คอลัมน์ =====
-const C = { ms:0, acc:1, axial:2, radial:3, gyro:4, sw:5, rpm:6, cur:7, motC:8, ambC:9, hum:10, slot:11, zAcc:12, zGyro:13, zCur:14, rise:15, status:16, reason:17 };
-
+// การ์ดค่า: sensor = ชื่อเซนเซอร์ในฉาก 3 มิติ (กดแล้วกล้องซูมไปหา)
 const CARDS = [
-  { key:'acc',    label:'การสั่นรวม · MPU6050',        unit:'m/s²', icon:'📳', dec:3 },
-  { key:'axial',  label:'แนวเพลา',                     unit:'m/s²', icon:'↔️', dec:3 },
-  { key:'radial', label:'แนวตั้งฉากเพลา',              unit:'m/s²', icon:'↕️', dec:3 },
-  { key:'gyro',   label:'การโยก · MPU6050',             unit:'°/s',  icon:'🔄', dec:2 },
-  { key:'rpm',    label:'รอบหมุน · TCRT5000',          unit:'RPM',  icon:'⚙️', dec:0 },
-  { key:'cur',    label:'กระแส · ACS712',              unit:'A',    icon:'⚡', dec:3 },
-  { key:'motC',   label:'อุณหภูมิมอเตอร์ · DS18B20',   unit:'°C',   icon:'🌡️', dec:1 },
-  { key:'ambC',   label:'อุณหภูมิอากาศ · DHT22',       unit:'°C',   icon:'🌤️', dec:1 },
-  { key:'hum',    label:'ความชื้น · DHT22',            unit:'%',    icon:'💧', dec:0 },
-  { key:'sw',     label:'แรงกระแทก · SW420',           unit:'ครั้ง/วิ', icon:'🔨', dec:1 },
+  { key:'acc',    label:'การสั่นรวม',      sensor:'mpu',  unit:'m/s²',   dec:3 },
+  { key:'gyro',   label:'การโยก',          sensor:'mpu',  unit:'°/s',    dec:2 },
+  { key:'axial',  label:'สั่นแนวเพลา',     sensor:'mpu',  unit:'m/s²',   dec:3 },
+  { key:'radial', label:'สั่นตั้งฉากเพลา', sensor:'mpu',  unit:'m/s²',   dec:3 },
+  { key:'rpm',    label:'รอบหมุน',         sensor:'tcrt', unit:'RPM',    dec:0 },
+  { key:'cur',    label:'กระแส',           sensor:'acs',  unit:'A',      dec:3 },
+  { key:'motC',   label:'อุณหภูมิมอเตอร์', sensor:'ds',   unit:'°C',     dec:1 },
+  { key:'ambC',   label:'อุณหภูมิอากาศ',   sensor:'dht',  unit:'°C',     dec:1 },
+  { key:'hum',    label:'ความชื้น',        sensor:'dht',  unit:'%',      dec:0 },
+  { key:'sw',     label:'แรงกระแทก',       sensor:'sw',   unit:'ครั้ง/วิ', dec:1 },
 ];
 const ZS = [ { key:'zAcc', label:'การสั่น' }, { key:'zGyro', label:'การโยก' }, { key:'zCur', label:'กระแส' } ];
-const HEALTH = [
-  { label:'MPU6050', key:'acc' }, { label:'TCRT5000', key:'rpm' }, { label:'ACS712', key:'cur' },
-  { label:'DS18B20', key:'motC' }, { label:'DHT22', key:'ambC' },
-];
 const STATUS = {
-  GREEN:        { th:'ปกติ',                     tone:'var(--green)' },
-  YELLOW:       { th:'เฝ้าระวัง',                tone:'var(--yellow)' },
-  RED:          { th:'อันตราย',                  tone:'var(--red)' },
-  'NO-BASELINE':{ th:'ยังไม่มี baseline',        tone:'var(--gray)' },
-  LEARNING:     { th:'กำลังเก็บ baseline',       tone:'var(--blue)' },
+  GREEN:         { th:'ปกติ',               tone:'#22c55e' },
+  YELLOW:        { th:'เฝ้าระวัง',          tone:'#facc15' },
+  RED:           { th:'อันตราย',            tone:'#ef4444' },
+  'NO-BASELINE': { th:'ยังไม่มี baseline',  tone:'#64748b' },
+  LEARNING:      { th:'กำลังเก็บค่าปกติ',   tone:'#60a5fa' },
 };
 const REASON = {
   '-':'ทุกค่าอยู่ในช่วงปกติ', vibration:'การสั่นผิดปกติ (เช็กความสมดุล/น็อตหลวม)', current:'กระแสสูงกว่าปกติ (ฝืดหรือโหลดเพิ่ม)',
@@ -220,59 +263,59 @@ const REASON = {
   'motor-hot':'มอเตอร์ร้อนเกิน 70°C', overcurrent:'กระแสเกิน 2.5 A (มอเตอร์ติดขัด)',
 };
 
-// ===== สร้างหน้า =====
 const $ = id => document.getElementById(id);
 const hist = {}; CARDS.forEach(c => hist[c.key] = []);
 $('cards').innerHTML = CARDS.map(c => `
-  <div class="card">
-    <div class="card-head"><span class="name">${c.label}</span><span>${c.icon}</span></div>
+  <div class="sc" data-sensor="${c.sensor}">
+    <div class="name"><span>${c.label}</span><span>${SENSOR_NAME(c.sensor)}</span></div>
     <div class="value"><span id="v-${c.key}">—</span><span class="unit">${c.unit}</span></div>
     <svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline id="s-${c.key}" points=""/></svg>
   </div>`).join('');
+function SENSOR_NAME(s) { return { mpu:'MPU6050', tcrt:'TCRT5000', acs:'ACS712', ds:'DS18B20', dht:'DHT22', sw:'SW420' }[s]; }
 $('zbox').innerHTML = ZS.map(z => `
   <div class="zrow"><span>${z.label}</span>
     <div class="ztrack"><div class="zfill" id="zf-${z.key}"></div><i class="zmark y"></i><i class="zmark r"></i></div>
     <span class="znum" id="zn-${z.key}">—</span></div>`).join('') +
-  `<div class="zrow"><span>อุณหภูมิขึ้น</span><div></div><span class="znum" id="rise">—</span></div>`;
-$('health').innerHTML = HEALTH.map(h => `<div class="chip"><span>${h.label}</span><span class="badge" id="h-${h.key}">—</span></div>`).join('');
+  `<div class="zrow"><span>อุณหภูมิขึ้น</span><div></div><span class="znum" id="rise">—</span></div>
+   <div id="znote">เฟิร์มแวร์ VibeGuard_web ไม่ส่งค่า z-score มา ถ้าอยากเห็นแถบนี้ให้อัปโหลด VibeGuard_v2.ino</div>`;
 
-// ===== เชื่อมต่อ =====
+// ----- ค่าล่าสุดที่ฉาก 3 มิติใช้ -----
+const live = { rpm: 0, acc: NaN, gyro: NaN, cur: NaN, motC: NaN, ambC: NaN, hum: NaN, sw: NaN,
+               status: null, ok: {}, active: false, lastT: 0 };
+
 let port = null, reader = null, writer = null, lines = 0, lastRateT = Date.now();
 let recording = false, recRows = [], lastStatus = null;
-let gotData = false, connectedAt = 0;
+let gotData = false, connectedAt = 0, fmt = null;   // fmt: 'v2' | 'web'
 
-// เชื่อมต่อแล้วแต่ไม่มีข้อมูล → บอกสาเหตุบนหน้าจอ
 setInterval(() => {
   if (!port || gotData || !connectedAt || Date.now() - connectedAt < 4000) return;
   $('status').textContent = 'เชื่อมต่อแล้ว แต่ยังไม่มีข้อมูล';
-  $('reason').textContent = 'กดปุ่ม "รีเซ็ตบอร์ด" · ถ้ายังไม่ขึ้น ดูข้อความในช่อง "ข้อความจาก ESP32" ด้านล่าง';
+  $('reason').textContent = 'กดปุ่ม "รีเซ็ตบอร์ด" · ถ้ายังไม่ขึ้น ดูช่อง "ข้อความจาก ESP32" ด้านล่าง';
 }, 1000);
 
 async function resetBoard() {
   if (!port) return;
   try {
-    await port.setSignals({ dataTerminalReady: false, requestToSend: true });   // EN = LOW (กดรีเซ็ต)
+    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
     await new Promise(r => setTimeout(r, 120));
-    await port.setSignals({ dataTerminalReady: false, requestToSend: false });  // ปล่อย → บูตปกติ
+    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
     log('> รีเซ็ตบอร์ดแล้ว รอข้อความตอนเปิดเครื่อง...');
     connectedAt = Date.now(); gotData = false;
   } catch (e) { log('# รีเซ็ตจากหน้าเว็บไม่ได้ ให้กดปุ่ม EN บนบอร์ดแทน'); }
 }
 
 $('btnConnect').onclick = async () => { port ? await disconnect() : await connect(); };
-
 async function connect() {
   if (!('serial' in navigator)) { log('# เบราว์เซอร์นี้ไม่รองรับ Web Serial — ใช้ Chrome หรือ Edge บนคอมพิวเตอร์'); return; }
+  demo.stop();
   try {
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: BAUD });
-    // บอร์ด ESP32 ส่วนใหญ่ใช้สาย DTR/RTS กดปุ่ม EN/BOOT ให้อัตโนมัติ ถ้าปล่อยค่าเริ่มต้นไว้ บอร์ดอาจค้างอยู่ในสถานะรีเซ็ต
-    // จึงปล่อยทั้งสองสาย = บอร์ดรีสตาร์ตแล้วทำงานปกติ (จะเห็นข้อความตอนเปิดเครื่องในช่องข้อความ)
     try { await port.setSignals({ dataTerminalReady: false, requestToSend: false }); } catch (e) {}
-    gotData = false; connectedAt = Date.now();
+    gotData = false; connectedAt = Date.now(); fmt = null;
     const enc = new TextEncoderStream(); enc.readable.pipeTo(port.writable); writer = enc.writable.getWriter();
     const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(() => {}); reader = dec.readable.getReader();
-    setConn(true);
+    setConn('serial');
     let buf = '';
     while (true) {
       const { value, done } = await reader.read();
@@ -282,7 +325,7 @@ async function connect() {
       while ((i = buf.indexOf('\n')) >= 0) { handleLine(buf.slice(0, i).trim()); buf = buf.slice(i + 1); }
     }
   } catch (e) {
-    log('# เชื่อมต่อไม่ได้: ' + e.message + ' (ปิด Serial Monitor ของ Arduino IDE แล้วลองใหม่)');
+    if (port) log('# เชื่อมต่อไม่ได้: ' + e.message + ' (ปิด Serial Monitor ของ Arduino IDE แล้วลองใหม่)');
   }
   await disconnect();
 }
@@ -290,54 +333,82 @@ async function disconnect() {
   try { if (reader) await reader.cancel(); } catch (e) {}
   try { if (writer) await writer.close(); } catch (e) {}
   try { if (port) await port.close(); } catch (e) {}
-  port = reader = writer = null; setConn(false);
+  const was = !!port;
+  port = reader = writer = null;
+  if (was) setConn(null);
 }
-function setConn(on) {
-  $('conn').classList.toggle('on', on);
-  document.querySelector('#conn span').textContent = on ? 'เชื่อมต่อแล้ว' : 'ออฟไลน์';
-  $('btnConnect').textContent = on ? 'ตัดการเชื่อมต่อ' : 'เชื่อมต่อ ESP32';
+function setConn(mode) {   // 'serial' | 'demo' | null
+  const on = !!mode;
+  $('conn').className = 'conn' + (mode === 'serial' ? ' on' : mode === 'demo' ? ' demo' : '');
+  document.querySelector('#conn span').textContent = mode === 'serial' ? 'เชื่อมต่อแล้ว' : mode === 'demo' ? 'โหมดสาธิต (ข้อมูลจำลอง)' : 'ออฟไลน์';
+  $('btnConnect').textContent = mode === 'serial' ? 'ตัดการเชื่อมต่อ' : 'เชื่อมต่อ ESP32';
+  $('btnDemo').textContent = mode === 'demo' ? '■ หยุดสาธิต' : '▶ โหมดสาธิต';
+  $('btnDemo').classList.toggle('on', mode === 'demo');
+  $('scen').hidden = mode !== 'demo';
   document.querySelectorAll('[data-cmd]').forEach(b => b.disabled = !on);
-  $('btnReset').disabled = !on;
-  if (!on) { $('status').textContent = 'ยังไม่เชื่อมต่อ'; $('reason').textContent = 'กด "เชื่อมต่อ ESP32" แล้วเลือกพอร์ตของบอร์ด'; }
+  $('btnReset').disabled = mode !== 'serial';
+  live.active = on;
+  if (!on) {
+    live.status = null; live.rpm = 0;
+    setTone('#64748b', 'ยังไม่เชื่อมต่อ', '');
+    $('status').textContent = 'ยังไม่เชื่อมต่อ';
+    $('reason').textContent = 'กด "เชื่อมต่อ ESP32" หรือ "โหมดสาธิต"';
+  }
 }
 $('btnReset').onclick = resetBoard;
-setConn(false);
 
-document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = async () => {
+async function sendCmd(cmd) {
+  if (demo.on) { demo.cmd(cmd); log('> ส่งคำสั่ง ' + cmd + ' (สาธิต)'); return; }
   if (!writer) return;
+  await writer.write(cmd + '\n');
+  log('> ส่งคำสั่ง ' + cmd);
+}
+document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => {
   if (b.dataset.confirm && !window.confirm(b.dataset.confirm)) return;
-  await writer.write(b.dataset.cmd + '\n');
-  log('> ส่งคำสั่ง ' + b.dataset.cmd);
+  sendCmd(b.dataset.cmd);
 });
 
-// ===== ประมวลผลบรรทัด =====
 function num(s) { const v = parseFloat(s); return Number.isFinite(v) ? v : NaN; }
+function is01(s) { return s === '0' || s === '1'; }
+
+function parseFields(f) {
+  if (!fmt) fmt = (is01(f[9]) && is01(f[10]) && is01(f[11]) && is01(f[12])) ? 'web' : 'v2';
+  const d = { status: f[16], reason: f[17] };
+  if (fmt === 'v2') {
+    for (const k in C2) d[k] = num(f[C2[k]]);
+    d.ok = { mpu: !isNaN(d.acc), tcrt: !isNaN(d.rpm), acs: !isNaN(d.cur), ds: !isNaN(d.motC), dht: !isNaN(d.ambC), sw: !isNaN(d.sw) };
+  } else {
+    Object.assign(d, { acc: num(f[1]), ambC: num(f[2]), hum: num(f[3]), sw: num(f[4]), rpm: num(f[6]), cur: num(f[7]), motC: num(f[8]),
+                       axial: NaN, radial: NaN, gyro: NaN, slot: NaN, zAcc: NaN, zGyro: NaN, zCur: NaN, rise: NaN });
+    d.ok = { dht: f[9] === '1', mpu: f[10] === '1', ds: f[11] === '1', acs: f[12] === '1', tcrt: !isNaN(d.rpm), sw: !isNaN(d.sw) };
+  }
+  return d;
+}
 
 function handleLine(line) {
   if (!line) return;
-  if (line.startsWith('ms,')) return;
+  if (line.startsWith('ms,')) { fmt = line.includes('airC') ? 'web' : 'v2'; return; }
   if (line[0] === '#') {
     log(line);
-    if (line.includes('ไม่พบ MPU6050')) { $('status').textContent = 'ESP32 หยุดทำงาน: ไม่พบ MPU6050'; $('reason').textContent = 'เช็กสาย MPU6050: VCC 3V3 · GND · SDA GPIO21 · SCL GPIO22 แล้วกดรีเซ็ตบอร์ด'; }
+    if (line.includes('ไม่พบ MPU6050') && fmt !== 'web') { $('status').textContent = 'ไม่พบ MPU6050'; $('reason').textContent = 'เช็กสาย MPU6050: VCC 3V3 · GND · SDA GPIO21 · SCL GPIO22 แล้วกดรีเซ็ตบอร์ด'; }
     return;
   }
   const f = line.split(',');
   if (f.length < 18) {
     log(line);
-    if (!gotData && /VibeGuard ทดสอบเซนเซอร์|= MPU6050/.test(line)) { $('status').textContent = 'บอร์ดนี้ยังเป็นโค้ดทดสอบ'; $('reason').textContent = 'อัปโหลด VibeGuard_v2.ino ลงบอร์ดก่อน แล้วเชื่อมต่อใหม่'; }
+    if (!gotData && /VibeGuard ทดสอบเซนเซอร์|= MPU6050/.test(line)) { $('status').textContent = 'บอร์ดนี้ยังเป็นโค้ดทดสอบ'; $('reason').textContent = 'อัปโหลด VibeGuard_web.ino หรือ VibeGuard_v2.ino ก่อน แล้วเชื่อมต่อใหม่'; }
     return;
   }
-  gotData = true;
-  lines++;
-
-  const d = {}; for (const k in C) d[k] = (k === 'status' || k === 'reason') ? f[C[k]] : num(f[C[k]]);
+  gotData = true; lines++;
+  const d = parseFields(f);
+  $('fmt').textContent = 'เฟิร์มแวร์: ' + (fmt === 'v2' ? 'VibeGuard_v2' : 'VibeGuard_web');
+  $('znote').style.display = fmt === 'web' ? 'block' : 'none';
 
   CARDS.forEach(c => {
     const v = d[c.key];
     $('v-' + c.key).textContent = Number.isNaN(v) ? '—' : v.toFixed(c.dec);
     if (!Number.isNaN(v)) { const h = hist[c.key]; h.push(v); if (h.length > HISTORY) h.shift(); spark(c.key, h); }
   });
-
   ZS.forEach(z => {
     const v = d[z.key];
     $('zn-' + z.key).textContent = Number.isNaN(v) ? '—' : v.toFixed(1);
@@ -347,56 +418,52 @@ function handleLine(line) {
   });
   $('rise').textContent = Number.isNaN(d.rise) ? '—' : d.rise.toFixed(1) + ' °C';
 
-  HEALTH.forEach(h => {
-    const ok = !Number.isNaN(d[h.key]);
-    const el = $('h-' + h.key); el.textContent = ok ? 'ปกติ' : 'ไม่มีค่า'; el.className = 'badge ' + (ok ? 'ok' : 'bad');
-  });
-
-  const st = STATUS[d.status] || { th: d.status, tone: 'var(--gray)' };
-  const hero = $('hero'); hero.className = 'hero ' + d.status; hero.style.setProperty('--tone', st.tone);
-  $('status').textContent = st.th;
+  const st = STATUS[d.status] || { th: d.status, tone: '#64748b' };
   const lm = /^learn(\d)-(\d+)\/(\d+)$/.exec(d.reason || '');
   $('lfill').style.width = lm ? (lm[2] / lm[3] * 100) + '%' : '0';
   $('btnNormal').textContent = lm ? `กำลังเก็บค่าปกติ ช่อง ${lm[1]} · ${Math.round(lm[2] / lm[3] * 100)}%` : '✓ ตอนนี้เครื่องปกติ';
-  $('reason').textContent = d.status === 'LEARNING' ? (lm ? `กำลังเก็บค่าปกติลงช่อง ${lm[1]} (${lm[2]}/${lm[3]}) ให้เครื่องหมุนค้างไว้` : 'ให้เครื่องหมุนปกติค้างไว้ ~30 วินาที')
-                         : d.status === 'NO-BASELINE' ? 'กดเก็บ baseline ที่รอบปัจจุบันก่อน'
-                         : (REASON[d.reason] || d.reason);
-  $('slot').textContent = 'baseline: ' + (d.slot > 0 ? 'ช่อง ' + d.slot : 'ยังไม่มี');
+  const reasonText = d.status === 'LEARNING' ? (lm ? `กำลังเก็บค่าปกติลงช่อง ${lm[1]} (${lm[2]}/${lm[3]}) ให้เครื่องหมุนค้างไว้` : 'ให้เครื่องหมุนปกติค้างไว้ ~30 วินาที')
+                   : d.status === 'NO-BASELINE' ? 'กด "ตอนนี้เครื่องปกติ" เพื่อสอนค่าปกติก่อน'
+                   : (REASON[d.reason] || d.reason);
+  $('status').textContent = st.th;
+  $('reason').textContent = reasonText;
+  setTone(st.tone, st.th, d.status);
+  $('slot').textContent = 'baseline: ' + (d.slot > 0 ? 'ช่อง ' + d.slot : fmt === 'web' ? '-' : 'ยังไม่มี');
   $('last').textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH');
 
-  if (lastStatus === 'LEARNING' && d.status !== 'LEARNING') {
-    const li = document.createElement('li');
-    li.textContent = `${new Date().toLocaleTimeString('th-TH')} · บันทึกค่าปกติแล้ว (ช่อง ${d.slot}) ที่ ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM`;
-    li.style.color = 'var(--blue)';
-    $('events').prepend(li);
-  }
-  if (d.status !== lastStatus && (d.status === 'YELLOW' || d.status === 'RED' || lastStatus === 'YELLOW' || lastStatus === 'RED')) {
-    const li = document.createElement('li');
-    li.textContent = `${new Date().toLocaleTimeString('th-TH')} · ${st.th} · ${REASON[d.reason] || d.reason} · ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM · ${Number.isNaN(d.cur) ? '-' : d.cur.toFixed(2)} A`;
-    li.style.color = st.tone;
-    $('events').prepend(li);
-  }
+  if (lastStatus === 'LEARNING' && d.status !== 'LEARNING') addEvent(`บันทึกค่าปกติแล้ว${d.slot > 0 ? ' (ช่อง ' + d.slot + ')' : ''} ที่ ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM`, 'var(--blue)');
+  if (d.status !== lastStatus && (d.status === 'YELLOW' || d.status === 'RED' || lastStatus === 'YELLOW' || lastStatus === 'RED'))
+    addEvent(`${st.th} · ${REASON[d.reason] || d.reason} · ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM · ${Number.isNaN(d.cur) ? '-' : d.cur.toFixed(2)} A`, st.tone);
   lastStatus = d.status;
 
-  if (recording) { recRows.push(new Date().toISOString() + ',' + line); $('recInfo').textContent = recRows.length + ' แถว'; }
+  Object.assign(live, { rpm: Number.isNaN(d.rpm) ? 0 : d.rpm, acc: d.acc, gyro: d.gyro, cur: d.cur, motC: d.motC, ambC: d.ambC,
+                        hum: d.hum, sw: d.sw, status: d.status, ok: d.ok, lastT: performance.now() });
+  updateTags();
 
+  if (recording) { recRows.push(new Date().toISOString() + ',' + line); $('recInfo').textContent = recRows.length + ' แถว'; }
   const now = Date.now();
   if (now - lastRateT > 3000) { $('rate').textContent = (lines / ((now - lastRateT) / 1000)).toFixed(1) + ' บรรทัด/วินาที'; lines = 0; lastRateT = now; }
 }
 
+function setTone(tone, text, status) {
+  document.documentElement.style.setProperty('--tone', tone);
+  $('pillText').textContent = text;
+  $('stage').className = 'stage ' + (status || '');
+}
+function addEvent(text, color) {
+  const li = document.createElement('li');
+  li.textContent = new Date().toLocaleTimeString('th-TH') + ' · ' + text;
+  li.style.color = color;
+  $('events').prepend(li);
+}
 function spark(key, arr) {
   if (arr.length < 2) return;
   const lo = Math.min(...arr), hi = Math.max(...arr), span = (hi - lo) || 1;
   $('s-' + key).setAttribute('points', arr.map((v, i) =>
     ((i / (arr.length - 1)) * 100).toFixed(1) + ',' + (38 - (v - lo) / span * 36).toFixed(1)).join(' '));
 }
+function log(text) { const el = $('log'); el.textContent = (text + '\n' + el.textContent).slice(0, 4000); }
 
-function log(text) {
-  const el = $('log');
-  el.textContent = (text + '\n' + el.textContent).slice(0, 4000);
-}
-
-// ===== บันทึก CSV (เอาไปทำกราฟในรายงาน) =====
 $('btnRec').onclick = () => {
   recording = !recording;
   if (recording) recRows = [];
@@ -405,12 +472,415 @@ $('btnRec').onclick = () => {
   $('recInfo').textContent = recording ? '0 แถว' : (recRows.length ? recRows.length + ' แถว พร้อมดาวน์โหลด' : '');
 };
 $('btnSave').onclick = () => {
-  const blob = new Blob(['time,' + HEADER + '\n' + recRows.join('\n') + '\n'], { type: 'text/csv' });
+  const blob = new Blob(['time,' + (fmt === 'web' ? HEADER_WEB : HEADER_V2) + '\n' + recRows.join('\n') + '\n'], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'vibeguard_' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.csv';
   a.click(); URL.revokeObjectURL(a.href);
 };
+
+// =====================================================================
+//  ส่วนที่ 2: โหมดสาธิต (สร้างบรรทัด CSV แบบ VibeGuard_v2 ปลอม ๆ)
+// =====================================================================
+const demo = {
+  on: false, timer: null, sc: 'normal', learn: -1, lslot: 1, slot: 1, motC: 31, t0: 0,
+  start() {
+    if (port) return;
+    this.on = true; this.sc = 'normal'; this.learn = -1; this.slot = 1; this.motC = 31; this.t0 = Date.now();
+    fmt = 'v2'; gotData = false; setConn('demo'); setScen('normal');
+    log('# โหมดสาธิต: ข้อมูลจำลอง ไม่ได้มาจากบอร์ดจริง');
+    this.timer = setInterval(() => this.tick(), 640);
+  },
+  stop() { if (!this.on) return; clearInterval(this.timer); this.on = false; fmt = null; setConn(null); log('# หยุดโหมดสาธิต'); },
+  tick() {
+    const g = (m, s) => m + (Math.random() * 2 - 1) * s;
+    let rpm = g(2500, 15), acc = g(.35, .03), axial = g(.14, .015), radial = g(.31, .03), gyro = g(1.2, .1);
+    let sw = Math.random() < .1 ? .2 : 0, cur = g(.46, .012);
+    const sc = this.sc;
+    if (sc === 'unbalance') { acc = g(1.55, .12); radial = g(1.45, .1); gyro = g(1.9, .15); sw = g(.8, .3); }
+    if (sc === 'loose')     { acc = g(.75, .12); gyro = g(3.4, .4); sw = g(3.5, 1); axial = g(.4, .06); }
+    if (sc === 'friction')  { cur = g(.62, .02); rpm = g(2050, 25); acc = g(.45, .04); }
+    this.motC += ((sc === 'hot' ? 76 : 34) - this.motC) * (sc === 'hot' ? .05 : .03) + g(0, .04);
+    const motC = this.motC, amb = g(30.2, .1), hum = g(61, .5);
+    let status = 'GREEN', reason = '-', slot = this.slot, zA = 0, zG = 0, zC = 0, rise = 0;
+    if (this.learn >= 0) {
+      this.learn++; status = 'LEARNING'; reason = `learn${this.lslot}-${this.learn}/45`; slot = 0;
+      if (this.learn >= 45) { this.learn = -1; this.slot = this.lslot; log(`# บันทึก baseline ช่อง ${this.lslot} แล้ว`); }
+    } else if (!this.slot) {
+      status = 'NO-BASELINE'; slot = 0;
+    } else {
+      zA = Math.abs(acc - .35) / .04; zG = Math.abs(gyro - 1.2) / .15; zC = Math.abs(cur - .46) / .03; rise = motC - 33;
+      const zv = Math.max(zA, zG);
+      if (motC >= 70) { status = 'RED'; reason = 'motor-hot'; }
+      else if (cur >= 2.5) { status = 'RED'; reason = 'overcurrent'; }
+      else if (zv >= 6) { status = 'RED'; reason = 'vibration'; }
+      else if (zC >= 6) { status = 'RED'; reason = 'current'; }
+      else if (zv >= 3) { status = 'YELLOW'; reason = 'vibration'; }
+      else if (zC >= 3) { status = 'YELLOW'; reason = 'current'; }
+      else if (rpm < 2500 * .85) { status = 'YELLOW'; reason = 'rpm-drop'; }
+      else if (rise >= 10) { status = 'YELLOW'; reason = 'temp-rise'; }
+    }
+    const fx = (v, n) => v.toFixed(n);
+    handleLine([Date.now() - this.t0, fx(acc, 4), fx(axial, 4), fx(radial, 4), fx(gyro, 3), fx(Math.max(0, sw), 2), fx(rpm, 0), fx(cur, 3),
+                fx(motC, 2), fx(amb, 1), fx(hum, 1), slot, fx(zA, 2), fx(zG, 2), fx(zC, 2), fx(rise, 2), status, reason].join(','));
+  },
+  cmd(c) {
+    const m = /^b([123])$/.exec(c);
+    if (c === 'n' || m) { this.lslot = m ? +m[1] : (this.slot || 1); this.learn = 0; this.setScenNormal(); log(`# เริ่มเก็บ baseline ช่อง ${this.lslot} (~30 วินาที) ให้เครื่องหมุนปกติค้างไว้`); }
+    else if (c === 'r') { this.slot = 0; this.learn = -1; log('# ลบ baseline ทั้งหมดแล้ว'); }
+    else if (c === 'z') log('# ตั้งศูนย์ ACS712 = 2508 mV (ควรอยู่ราว 2400-2600)');
+    else if (c === 'p') { log('# ตาราง baseline (สาธิต)'); log(this.slot ? `# ${this.slot} | 2500 | 33.0 | 0.3500/0.0400 | 1.200/0.150 | 0.02/0.06 | 0.460/0.030` : '# (ยังไม่มี)'); }
+  },
+  setScenNormal() { this.sc = 'normal'; setScen('normal'); },
+};
+function setScen(sc) {
+  demo.sc = sc;
+  document.querySelectorAll('[data-sc]').forEach(b => b.classList.toggle('on', b.dataset.sc === sc));
+}
+document.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => setScen(b.dataset.sc));
+$('btnDemo').onclick = () => demo.on ? demo.stop() : demo.start();
+
+// =====================================================================
+//  ส่วนที่ 3: ฉาก 3 มิติ (WebGL ล้วน) — หน่วยเป็น มม. ตามแท่นจริง
+//  แกน X = แนวเพลามอเตอร์ · Y = ขึ้นบน · Z = หน้า(−)/หลัง(+)
+// =====================================================================
+const canvas = $('gl');
+const gl = canvas.getContext('webgl', { antialias: true, alpha: true }) || canvas.getContext('experimental-webgl');
+
+// ----- คณิตเมทริกซ์ (column-major) -----
+const M4 = {
+  id() { const m = new Float32Array(16); m[0] = m[5] = m[10] = m[15] = 1; return m; },
+  mul(a, b) { const o = new Float32Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; } return o; },
+  T(x, y, z) { const m = M4.id(); m[12] = x; m[13] = y; m[14] = z; return m; },
+  S(x, y, z) { const m = M4.id(); m[0] = x; m[5] = y; m[10] = z; return m; },
+  Rx(a) { const m = M4.id(), c = Math.cos(a), s = Math.sin(a); m[5] = c; m[6] = s; m[9] = -s; m[10] = c; return m; },
+  Ry(a) { const m = M4.id(), c = Math.cos(a), s = Math.sin(a); m[0] = c; m[2] = -s; m[8] = s; m[10] = c; return m; },
+  Rz(a) { const m = M4.id(), c = Math.cos(a), s = Math.sin(a); m[0] = c; m[1] = s; m[4] = -s; m[5] = c; return m; },
+  persp(fov, asp, n, f) { const t = 1 / Math.tan(fov / 2), m = new Float32Array(16); m[0] = t / asp; m[5] = t; m[10] = (f + n) / (n - f); m[11] = -1; m[14] = 2 * f * n / (n - f); return m; },
+  look(e, c, u) {
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], nrm = a => { const l = Math.hypot(...a) || 1; return a.map(v => v / l); };
+    const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const z = nrm(sub(e, c)), x = nrm(cr(u, z)), y = cr(z, x);
+    return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dt(x, e), -dt(y, e), -dt(z, e), 1]);
+  },
+};
+const chain = (...ms) => ms.reduce((a, b) => M4.mul(a, b));
+
+// ----- shader -----
+const VS = `attribute vec3 aP; attribute vec3 aN; uniform mat4 uM, uVP; varying vec3 vN, vW;
+void main(){ vec4 w = uM * vec4(aP, 1.0); vW = w.xyz; vN = (uM * vec4(aN, 0.0)).xyz; gl_Position = uVP * w; }`;
+const FS = `precision mediump float;
+uniform vec3 uCol, uEmis, uEye; uniform float uSpec, uHalo, uAlpha; uniform vec2 uHC;
+varying vec3 vN, vW;
+void main(){
+  if (uHalo > 0.0) { float d = length(vW.xz - uHC) / uHalo; float a = pow(max(0.0, 1.0 - d), 1.4) * uAlpha; gl_FragColor = vec4(uCol * a, a); return; }
+  vec3 n = normalize(vN); vec3 v = normalize(uEye - vW); if (dot(n, v) < 0.0) n = -n;
+  vec3 L = normalize(vec3(-0.45, 1.0, -0.55)); float dif = max(dot(n, L), 0.0);
+  vec3 L2 = normalize(vec3(0.7, 0.35, 0.6)); float dif2 = max(dot(n, L2), 0.0);
+  float hemi = 0.5 + 0.5 * n.y; vec3 amb = mix(vec3(0.07, 0.08, 0.11), vec3(0.30, 0.33, 0.40), hemi);
+  vec3 h = normalize(L + v); float sp = pow(max(dot(n, h), 0.0), 48.0) * uSpec;
+  float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * 0.22;
+  vec3 c = uCol * (amb + dif * vec3(1.0, 0.97, 0.92) * 0.85 + dif2 * vec3(0.45, 0.55, 0.85) * 0.25) + sp + rim * vec3(0.35, 0.45, 0.8) + uEmis;
+  gl_FragColor = vec4(c, 1.0);
+}`;
+function mkShader(t, s) { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(sh)); return sh; }
+const prog = gl.createProgram();
+gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+const A = { p: gl.getAttribLocation(prog, 'aP'), n: gl.getAttribLocation(prog, 'aN') };
+const U = {}; ['uM', 'uVP', 'uCol', 'uEmis', 'uEye', 'uSpec', 'uHalo', 'uAlpha', 'uHC'].forEach(k => U[k] = gl.getUniformLocation(prog, k));
+gl.enableVertexAttribArray(A.p); gl.enableVertexAttribArray(A.n);
+gl.enable(gl.DEPTH_TEST);
+
+// ----- รูปทรงพื้นฐาน (สามเหลี่ยม + normal) -----
+function mesh(arr) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW); return { b, n: arr.length / 6 }; }
+function quad(o, p, a, b, c, d, n) { o.push(...a, ...n, ...b, ...n, ...c, ...n, ...a, ...n, ...c, ...n, ...d, ...n); }
+const BOX = (() => { const o = [], h = .5;
+  quad(o, 0, [h,-h,-h],[h,h,-h],[h,h,h],[h,-h,h],[1,0,0]); quad(o, 0, [-h,-h,-h],[-h,-h,h],[-h,h,h],[-h,h,-h],[-1,0,0]);
+  quad(o, 0, [-h,h,-h],[-h,h,h],[h,h,h],[h,h,-h],[0,1,0]); quad(o, 0, [-h,-h,-h],[h,-h,-h],[h,-h,h],[-h,-h,h],[0,-1,0]);
+  quad(o, 0, [-h,-h,h],[h,-h,h],[h,h,h],[-h,h,h],[0,0,1]); quad(o, 0, [-h,-h,-h],[-h,h,-h],[h,h,-h],[h,-h,-h],[0,0,-1]);
+  return mesh(o); })();
+const CYL = (() => { const o = [], N = 40;   // รัศมี 1 สูง 1 ตามแกน Y (−0.5..0.5)
+  for (let i = 0; i < N; i++) {
+    const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2, c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+    o.push(c0,-.5,s0, c0,0,s0, c1,-.5,s1, c1,0,s1, c1,.5,s1, c1,0,s1);  o.push(c0,-.5,s0, c0,0,s0, c1,.5,s1, c1,0,s1, c0,.5,s0, c0,0,s0);
+    o.push(0,.5,0, 0,1,0, c0,.5,s0, 0,1,0, c1,.5,s1, 0,1,0);  o.push(0,-.5,0, 0,-1,0, c1,-.5,s1, 0,-1,0, c0,-.5,s0, 0,-1,0);
+  } return mesh(o); })();
+const SPH = (() => { const o = [], R = 14, S = 22;
+  const P = (i, j) => { const t = i / R * Math.PI, p = j / S * Math.PI * 2; return [Math.sin(t) * Math.cos(p), Math.cos(t), Math.sin(t) * Math.sin(p)]; };
+  for (let i = 0; i < R; i++) for (let j = 0; j < S; j++) { const a = P(i, j), b = P(i + 1, j), c = P(i + 1, j + 1), d = P(i, j + 1); o.push(...a, ...a, ...b, ...b, ...c, ...c, ...a, ...a, ...c, ...c, ...d, ...d); }
+  return mesh(o); })();
+const PLANE = mesh([-1,0,-1,0,1,0, 1,0,-1,0,1,0, 1,0,1,0,1,0, -1,0,-1,0,1,0, 1,0,1,0,1,0, -1,0,1,0,1,0]);
+
+// ----- วัตถุในฉาก -----
+// group: 'shake' = มอเตอร์+จาน (สั่นตามค่าการสั่น) · 'spin' = หมุนรอบเพลาด้วย
+const rgb = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+const objs = [];
+function add(m, M, color, o = {}) { const ob = { m, M, color: rgb(color), emis: [0, 0, 0], spec: o.spec ?? .25, group: o.group || null, id: o.id || null, local: o.local || null }; objs.push(ob); return ob; }
+const box = (x, y, z, w, h, d, col, o) => add(BOX, chain(M4.T(x, y, z), o?.R || M4.id(), M4.S(w, h, d)), col, o);
+const cylX = (x, y, z, r, len, col, o) => add(CYL, chain(M4.T(x, y, z), M4.Rz(Math.PI / 2), M4.S(r, len, r)), col, o);   // แกนตามเพลา (X)
+const cylY = (x, y, z, r, h, col, o) => add(CYL, chain(M4.T(x, y + h / 2, z), M4.S(r, h, r)), col, o);
+const sph = (x, y, z, r, col, o) => add(SPH, chain(M4.T(x, y, z), M4.S(r, r, r)), col, o);
+function tube(pts, r, col) {   // สายไฟ: ท่อกลมต่อกันตามจุด
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...d); if (L < .01) continue;
+    const y = d.map(v => v / L), ref = Math.abs(y[1]) < .9 ? [0, 1, 0] : [1, 0, 0];
+    let x = [y[1] * ref[2] - y[2] * ref[1], y[2] * ref[0] - y[0] * ref[2], y[0] * ref[1] - y[1] * ref[0]]; const xl = Math.hypot(...x); x = x.map(v => v / xl);
+    const z = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+    const B = new Float32Array([x[0], x[1], x[2], 0, y[0], y[1], y[2], 0, z[0], z[1], z[2], 0, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, 1]);
+    add(CYL, M4.mul(B, M4.S(r, L, r)), col, { spec: .4 });
+    if (i > 0) sph(a[0], a[1], a[2], r, col);
+  }
+}
+
+// ขนาดอ้างอิงแท่นจริง: ฐาน 200×200×6 · มอเตอร์ RS-390 Ø28 ยาว 38 · จาน Ø90 · แกนเพลาสูง 55 มม.
+const SH_Y = 55, SH_Z = -45, DISC_X = 4, DISC_R = 45, TAPE_R = 34;
+const BLUE = '#1f6ea6', BLUE_D = '#195a88';
+// ฐาน + ขายาง
+box(0, -3, 0, 200, 6, 200, BLUE, { spec: .15 });
+[[-92, -92], [92, -92], [-92, 92], [92, 92]].forEach(([x, z]) => cylY(x, -9, z, 6, 6, '#111318'));
+// แท่นรับมอเตอร์ (ปริ้นติดฐาน)
+box(-27, 19, SH_Z, 44, 38, 44, BLUE_D, { spec: .15 });
+box(-27, 2, SH_Z, 56, 4, 56, BLUE_D, { spec: .15 });
+// มอเตอร์ (group shake) — สีเปลี่ยนตามอุณหภูมิ
+const motorBody = cylX(-29, SH_Y, SH_Z, 14, 34, '#a7adb8', { group: 'shake', spec: .9 });
+cylX(-48, SH_Y, SH_Z, 13, 4, '#2a2d34', { group: 'shake' });
+cylX(-11, SH_Y, SH_Z, 11, 2.5, '#c9ced6', { group: 'shake', spec: .9 });
+cylX(-51, SH_Y + 6, SH_Z, 1.5, 4, '#c8a050', { group: 'shake' });   // ขั้วมอเตอร์
+cylX(-51, SH_Y - 6, SH_Z, 1.5, 4, '#c8a050', { group: 'shake' });
+cylX(-31, SH_Y, SH_Z, 14.6, 3, '#15171c', { group: 'shake' });     // เคเบิลไทร์
+cylX(-19, SH_Y, SH_Z, 14.6, 3, '#15171c', { group: 'shake' });
+cylX(-5, SH_Y, SH_Z, 1.2, 14, '#d8dde5', { group: 'shake', spec: 1 });   // เพลา
+// DS18B20 แปะบนมอเตอร์
+cylX(-28, SH_Y + 16.5, SH_Z, 3, 20, '#cfd4dc', { group: 'shake', spec: 1, id: 'ds' });
+// จานหมุน (group spin) + เทปขาว
+const discParts = [];
+discParts.push(add(CYL, null, '#1a1c22', { group: 'spin', spec: .3, local: chain(M4.Rz(Math.PI / 2), M4.S(DISC_R, 3, DISC_R)) }));
+discParts.push(add(CYL, null, '#23262e', { group: 'spin', spec: .3, local: chain(M4.T(-4, 0, 0), M4.Rz(Math.PI / 2), M4.S(8, 6, 8)) }));
+discParts.push(add(BOX, null, '#f2f2f2', { group: 'spin', spec: .5, local: chain(M4.T(1.6, TAPE_R, 0), M4.S(.5, 12, 8)) }));
+[0, 1, 2, 3, 4, 5].forEach(i => { const a = i / 6 * Math.PI * 2 + .5;   // รูน็อตถ่วงสมดุล
+  discParts.push(add(CYL, null, '#3a3e48', { group: 'spin', spec: .6, local: chain(M4.T(1.6, Math.cos(a) * 24, Math.sin(a) * 24), M4.Rz(Math.PI / 2), M4.S(1.8, .4, 1.8)) })); });
+discParts.forEach(p => p.local = p.local || M4.id());
+// เสา TCRT + บอร์ด TCRT5000 หันเข้าหาจาน
+box(DISC_X + 11, 44, SH_Z, 12, 88, 14, BLUE, { spec: .15 });
+box(DISC_X + 11, 2, SH_Z, 26, 4, 30, BLUE, { spec: .15 });
+box(DISC_X + 8.6, SH_Y + TAPE_R, SH_Z, 1.6, 26, 10, '#16181d', { id: 'tcrt' });
+cylX(DISC_X + 7, SH_Y + TAPE_R + 4, SH_Z - 2.4, 2.3, 3, '#2050c0');
+cylX(DISC_X + 7, SH_Y + TAPE_R + 4, SH_Z + 2.4, 2.3, 3, '#141414');
+const tcrtLed = sph(DISC_X + 9.6, SH_Y + TAPE_R - 8, SH_Z + 3, 1, '#401010');
+// MPU6050 แปะข้างแท่นมอเตอร์ (ด้านหลัง) · SW420 ด้านหน้า
+box(-27, 22, SH_Z + 22.8, 21, 16, 1.6, '#1f4fb8', { id: 'mpu', group: 'shake' });
+box(-27, 22, SH_Z + 23.9, 5, 5, 1, '#111', { group: 'shake' });
+box(-27, 22, SH_Z - 22.8, 32, 14, 1.6, '#1f4fb8', { id: 'sw' });
+cylX(-35, 22, SH_Z - 26, 3, 7, '#202226', { R: M4.Ry(Math.PI / 2) });
+box(-18, 24, SH_Z - 24.4, 6, 6, 3, '#3c7be8');
+// LM2596 (ตัวปรับรอบ) + ACS712
+box(62, 1, -78, 43, 2, 21, '#1d4fbf', { id: 'lm' });
+cylY(55, 2, -78, 6, 8, '#222');  cylY(70, 2, -73, 4, 10, '#16181c'); cylY(70, 2, -83, 4, 10, '#16181c');
+box(78, 6, -78, 9, 9, 6, '#2b67de');
+box(62, 1, -40, 31, 2, 14, '#c62828', { id: 'acs' });
+box(52, 6, -40, 8, 9, 13, '#1f62d4'); box(64, 3, -40, 6, 3, 5, '#111');
+// เบรดบอร์ด + ESP32 + จอ OLED + LED 3 ดวง + DHT22 + โมดูล DS18B20
+box(-5, 4.5, 50, 165, 9, 56, '#e9ebef', { spec: .1 });
+box(-45, 11, 50, 52, 3, 28, '#15171c', { id: 'esp' });
+box(-38, 14, 50, 18, 3, 16, '#bfc4cc', { spec: .9 });
+box(-68, 13.5, 50, 8, 3, 9, '#a9aeb6', { spec: .9 });
+box(18, 16, 42, 27, 1.6, 27, '#14161b', { R: M4.Rx(-0.75) });
+const oled = box(18, 16.8, 42.6, 24, .4, 13, '#05080f', { R: M4.Rx(-0.75), id: 'oled' });
+const leds = [['#ef4444', 'RED'], ['#22c55e', 'GREEN'], ['#facc15', 'YELLOW']].map(([c, s], i) => {
+  cylY(48 + i * 12, 9, 64, 2.6, 3, '#222');
+  return { s, base: rgb(c), o: sph(48 + i * 12, 14, 64, 2.6, c, { spec: .8 }) };
+});
+box(72, 23, 40, 15, 26, 8, '#f3f4f6', { id: 'dht', spec: .1 });
+for (let i = 0; i < 5; i++) box(72, 30 - i * 3.6, 35.8, 11, 1.4, .6, '#9aa0aa');
+box(-2, 10, 72, 18, 2, 12, '#1f4fb8'); box(-6, 13, 72, 7, 5, 9, '#2f9c46');
+// สายไฟ
+const PWR = [[62, 3, -78], [40, 3, -78], [40, 3, -60], [52, 3, -40], [40, 3, -40], [40, 3, -66], [-55, 3, -66], [-55, 30, -66], [-55, SH_Y + 6, SH_Z]];
+tube([[100, 4, -78], [80, 4, -78]], 1.2, '#c62828');
+tube([[105, 3, -90], [100, 3, -82]], 2.2, '#111318');
+tube(PWR, 1, '#d63a3a');
+tube([[-55, SH_Y - 6, SH_Z], [-60, 30, -70], [-60, 3, -70], [62, 3, -70]], 1, '#1b1d22');
+tube([[-27, 22, SH_Z + 24], [-27, 12, 18], [-27, 10, 36]], .7, '#38bdf8');
+tube([[-27, 15, SH_Z - 24], [-8, 3, -100 + 32], [-8, 3, 20], [-25, 10, 36]], .7, '#a78bfa');
+tube([[DISC_X + 11, 88, SH_Z + 5], [DISC_X + 18, 80, SH_Z + 8], [DISC_X + 18, 3, 10], [-20, 10, 36]], .7, '#fb923c');
+tube([[62, 3, -33], [30, 3, 10], [-15, 10, 38]], .7, '#facc15');
+tube([[-28, SH_Y + 18, SH_Z + 8], [-12, 40, -5], [-4, 10, 66]], .7, '#e5e7eb');
+tube([[72, 10, 44], [40, 10, 66], [-10, 10, 64]], .7, '#34d399');
+// ไฟสถานะใต้แท่น + จุดกระแสไหล
+const halo = { col: [.4, .45, .55] };
+const flow = Array.from({ length: 7 }, () => sph(0, 0, 0, 1.8, '#ffe08a', { spec: 0 }));
+flow.forEach(f => f.emis = [1, .85, .3]);
+const motorBase = rgb('#a7adb8');
+
+// ----- ป้ายค่าลอยในฉาก -----
+const TAGS = [
+  { id: 'mpu',  name: 'MPU6050 · การสั่น',     at: [-27, 34, SH_Z + 23], val: () => fmtV(live.acc, 3, 'm/s²') },
+  { id: 'tcrt', name: 'TCRT5000 · รอบหมุน',     at: [DISC_X + 9, SH_Y + TAPE_R + 16, SH_Z], val: () => fmtV(live.active ? live.rpm : NaN, 0, 'RPM') },
+  { id: 'ds',   name: 'DS18B20 · อุณหภูมิมอเตอร์', at: [-28, SH_Y + 20, SH_Z], val: () => fmtV(live.motC, 1, '°C') },
+  { id: 'acs',  name: 'ACS712 · กระแส',         at: [62, 6, -40], val: () => fmtV(live.cur, 3, 'A') },
+  { id: 'sw',   name: 'SW420 · แรงกระแทก',       at: [-27, 30, SH_Z - 23], val: () => fmtV(live.sw, 1, 'ครั้ง/วิ') },
+  { id: 'dht',  name: 'DHT22 · อากาศ',           at: [72, 37, 40], val: () => fmtV(live.ambC, 1, '°C') + ' · ' + fmtV(live.hum, 0, '%') },
+  { id: 'esp',  name: 'ESP32 + จอ OLED',         at: [-45, 15, 50], val: () => live.status ? (STATUS[live.status]?.th || live.status) : 'ออฟไลน์' },
+];
+function fmtV(v, d, u) { return Number.isNaN(v) || v === undefined ? '—' : `${v.toFixed(d)}<small>${u}</small>`; }
+$('labels').innerHTML = TAGS.map(t => `<div class="tag" id="t-${t.id}" data-sensor="${t.id}"><div class="tn"><i></i>${t.name}</div><div class="tv">—</div></div>`).join('');
+function updateTags() {
+  TAGS.forEach(t => {
+    const el = $('t-' + t.id);
+    el.querySelector('.tv').innerHTML = t.val();
+    const ok = t.id === 'esp' ? live.active : live.ok?.[t.id];
+    el.classList.toggle('ok', live.active && !!ok);
+    el.classList.toggle('bad', live.active && !ok);
+  });
+}
+updateTags();
+
+// ----- กล้อง (ลากหมุน / ซูม) -----
+const VIEWS = { iso: [-0.62, 0.5, 430], front: [0, 0.14, 390], side: [-Math.PI / 2, 0.14, 390], top: [0, 1.45, 440] };
+const cam = { th: -.62, ph: .52, dist: 430, tgt: [0, 28, 0] }, camGoal = { th: -.62, ph: .52, dist: 430, tgt: [0, 28, 0] };
+let autoSpin = false, selected = null, lastInteract = 0;
+function setView(v) {
+  const [th, ph, d] = VIEWS[v]; Object.assign(camGoal, { th, ph, dist: d, tgt: [0, 28, 0] }); select(null);
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+}
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+$('btnSpin').onclick = () => { autoSpin = !autoSpin; $('btnSpin').classList.toggle('on', autoSpin); };
+$('btnLabels').onclick = () => { const on = !$('btnLabels').classList.contains('on'); $('btnLabels').classList.toggle('on', on); $('labels').style.display = on ? '' : 'none'; };
+function select(id) {
+  selected = id;
+  document.querySelectorAll('.tag').forEach(t => t.classList.toggle('sel', t.dataset.sensor === id));
+  document.querySelectorAll('.sc').forEach(c => c.classList.toggle('sel', c.dataset.sensor === id));
+  if (id) {
+    const t = TAGS.find(t => t.id === id);
+    camGoal.tgt = [-t.at[0], t.at[1], t.at[2]]; camGoal.dist = 150;
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('on'));
+  }
+}
+document.querySelectorAll('[data-sensor]').forEach(el => el.addEventListener('click', () => select(selected === el.dataset.sensor ? null : el.dataset.sensor)));
+document.querySelectorAll('.sc').forEach(el => el.addEventListener('click', () => { if (window.innerWidth <= 900) $('stage').scrollIntoView({ behavior: 'smooth' }); }));
+
+const pointers = new Map(); let pinch0 = 0;
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); lastInteract = performance.now(); });
+canvas.addEventListener('pointerup', e => { pointers.delete(e.pointerId); pinch0 = 0; });
+canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); pinch0 = 0; });
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  const [px, py] = pointers.get(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  lastInteract = performance.now();
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (pinch0) camGoal.dist = Math.max(90, Math.min(800, camGoal.dist * pinch0 / d)); pinch0 = d; return;
+  }
+  camGoal.th -= (e.clientX - px) * 0.008; camGoal.ph = Math.max(-0.05, Math.min(1.5, camGoal.ph + (e.clientY - py) * 0.006));
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('on'));
+});
+canvas.addEventListener('wheel', e => { e.preventDefault(); camGoal.dist = Math.max(90, Math.min(800, camGoal.dist * Math.exp(e.deltaY * 0.001))); }, { passive: false });
+
+// ----- วาดทุกเฟรม -----
+let discAng = 0, rpmShow = 0, last = performance.now(), flowT = 0;
+const SLOW = 15;
+const MIR = M4.S(-1, 1, 1);   // กลับซ้าย-ขวา ให้มองจากด้านหน้าแล้วมอเตอร์อยู่ซ้าย จานอยู่ขวา เหมือนแท่นจริง   // ภาพจานหมุนช้ากว่าจริง 15 เท่า
+function lerp(a, b, t) { return a + (b - a) * t; }
+function mix3(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const W = canvas.clientWidth, H = canvas.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // ข้อมูลเก่าเกิน 5 วิ = ถือว่าเครื่องหยุด
+  const fresh = live.active && now - live.lastT < 5000;
+  rpmShow = lerp(rpmShow, fresh ? live.rpm : 0, 1 - Math.exp(-dt * 2));
+  discAng += rpmShow / 60 * Math.PI * 2 / SLOW * dt;
+
+  // กล้อง
+  if (autoSpin && now - lastInteract > 1500) camGoal.th += dt * 0.25;
+  const k = 1 - Math.exp(-dt * 6);
+  cam.th = lerp(cam.th, camGoal.th, k); cam.ph = lerp(cam.ph, camGoal.ph, k); cam.dist = lerp(cam.dist, camGoal.dist, k);
+  cam.tgt = cam.tgt.map((v, i) => lerp(v, camGoal.tgt[i], k));
+  const eye = [cam.tgt[0] + cam.dist * Math.cos(cam.ph) * Math.sin(cam.th), cam.tgt[1] + cam.dist * Math.sin(cam.ph), cam.tgt[2] - cam.dist * Math.cos(cam.ph) * Math.cos(cam.th)];
+  const VP = M4.mul(M4.persp(0.62, W / Math.max(1, H), 5, 3000), M4.look(eye, cam.tgt, [0, 1, 0]));
+  gl.uniformMatrix4fv(U.uVP, false, VP); gl.uniform3fv(U.uEye, eye); gl.uniform1f(U.uHalo, 0);
+
+  // การสั่น: ขยายภาพให้ตาเห็น (ค่าจริงเป็นไมครอน)
+  const acc = fresh && !Number.isNaN(live.acc) ? live.acc : 0, gyro = fresh && !Number.isNaN(live.gyro) ? live.gyro : 0;
+  const amp = Math.min(3.2, Math.max(0, acc - 0.3) * 1.6 + Math.max(0, gyro - 1.5) * 0.5);
+  const shake = [(Math.random() - .5) * amp * .4, (Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  const tilt = (Math.random() - .5) * amp * 0.004;
+  const SHK = chain(M4.T(...shake), M4.T(-27, 0, SH_Z), M4.Rx(tilt), M4.T(27, 0, -SH_Z));
+  const SPIN = chain(SHK, M4.T(DISC_X, SH_Y, SH_Z), M4.Rx(-discAng));
+
+  // สีมอเตอร์ตามอุณหภูมิ 30 → 75 °C
+  const tC = fresh && !Number.isNaN(live.motC) ? Math.max(0, Math.min(1, (live.motC - 32) / 40)) : 0;
+  motorBody.color = tC < .5 ? mix3(motorBase, [0.95, 0.6, 0.25], tC * 2) : mix3([0.95, 0.6, 0.25], [0.95, 0.22, 0.12], (tC - .5) * 2);
+  motorBody.emis = tC > .7 ? [(tC - .7) * 1.2, (tC - .7) * .25, 0] : [0, 0, 0];
+
+  // ไฟ LED ตามสถานะ · TCRT ไฟกะพริบตอนเทปผ่าน · จอ OLED
+  const st = fresh ? live.status : null;
+  const blink = st === 'RED' ? (Math.sin(now / 130) > 0 ? 1 : .15) : 1;
+  leds.forEach(l => { const on = st === l.s; l.o.color = on ? l.base : l.base.map(v => v * .25); l.o.emis = on ? l.base.map(v => v * .9 * blink) : [0, 0, 0]; });
+  const tapeAng = ((discAng % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const nearTape = rpmShow > 5 && (tapeAng < .25 || tapeAng > Math.PI * 2 - .25);
+  tcrtLed.emis = nearTape ? [1, .15, .1] : [0, 0, 0];
+  oled.emis = live.active ? [0.08, 0.32, 0.5] : [0, 0, 0];
+
+  // จุดกระแสไหลตามสายไฟ ความเร็วตามกระแส
+  const cur = fresh && !Number.isNaN(live.cur) ? live.cur : 0;
+  flowT += dt * Math.min(3, cur * 1.2);
+  const segL = []; let tot = 0;
+  for (let i = 0; i < PWR.length - 1; i++) { const l = Math.hypot(PWR[i + 1][0] - PWR[i][0], PWR[i + 1][1] - PWR[i][1], PWR[i + 1][2] - PWR[i][2]); segL.push(l); tot += l; }
+  flow.forEach((f, i) => {
+    let s = (((flowT * 60 + i / flow.length * tot) % tot) + tot) % tot, j = 0;
+    while (j < segL.length - 1 && s > segL[j]) { s -= segL[j]; j++; }
+    const a = PWR[j], b = PWR[j + 1], t = Math.min(1, s / segL[j]);
+    f.M = chain(M4.T(lerp(a[0], b[0], t), lerp(a[1], b[1], t) + .6, lerp(a[2], b[2], t)), M4.S(1.8, 1.8, 1.8));
+    f.hide = cur < 0.03;
+  });
+
+  // วาดวัตถุทึบ
+  gl.disable(gl.BLEND); gl.depthMask(true);
+  for (const o of objs) {
+    if (o.hide) continue;
+    const M = M4.mul(MIR, o.group === 'spin' ? M4.mul(SPIN, o.local) : o.group === 'shake' ? M4.mul(SHK, o.M) : o.M);
+    gl.bindBuffer(gl.ARRAY_BUFFER, o.m.b);
+    gl.vertexAttribPointer(A.p, 3, gl.FLOAT, false, 24, 0); gl.vertexAttribPointer(A.n, 3, gl.FLOAT, false, 24, 12);
+    gl.uniformMatrix4fv(U.uM, false, M); gl.uniform3fv(U.uCol, o.color); gl.uniform3fv(U.uEmis, o.emis); gl.uniform1f(U.uSpec, o.spec);
+    gl.drawArrays(gl.TRIANGLES, 0, o.m.n);
+  }
+
+  // แสงสถานะใต้แท่น + แสงไฟ LED
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE); gl.depthMask(false);
+  gl.bindBuffer(gl.ARRAY_BUFFER, PLANE.b);
+  gl.vertexAttribPointer(A.p, 3, gl.FLOAT, false, 24, 0); gl.vertexAttribPointer(A.n, 3, gl.FLOAT, false, 24, 12);
+  const tone = st && STATUS[st] ? rgb(STATUS[st].tone) : [.35, .4, .5];
+  halo.col = mix3(halo.col, tone, 1 - Math.exp(-dt * 4));
+  const pulse = st === 'RED' ? .8 + .35 * Math.sin(now / 130) : .7;
+  drawHalo(0, 0, -11, 200, halo.col, pulse);
+  leds.forEach((l, i) => { if (st === l.s) drawHalo(-(48 + i * 12), 64, 9.3, 14, l.base, .9 * blink); });
+  gl.depthMask(true); gl.disable(gl.BLEND);
+
+  // ตำแหน่งป้าย
+  if ($('labels').style.display !== 'none') TAGS.forEach(t => {
+    let p = [-t.at[0], t.at[1], t.at[2]]; if (t.id === 'mpu' || t.id === 'ds') p = [p[0] - shake[0], p[1] + shake[1], p[2] + shake[2]];
+    const c = [0, 1, 2, 3].map(r => VP[r] * p[0] + VP[4 + r] * p[1] + VP[8 + r] * p[2] + VP[12 + r]);
+    const el = $('t-' + t.id);
+    if (c[3] <= 0) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.style.left = ((c[0] / c[3] * .5 + .5) * W) + 'px';
+    el.style.top = ((-c[1] / c[3] * .5 + .5) * H) + 'px';
+    el.style.zIndex = String(1000 - Math.round(c[3]));
+  });
+  requestAnimationFrame(frame);
+}
+function drawHalo(x, z, y, r, col, a) {
+  gl.uniformMatrix4fv(U.uM, false, chain(M4.T(x, y, z), M4.S(r, 1, r)));
+  gl.uniform1f(U.uHalo, r); gl.uniform2f(U.uHC, x, z); gl.uniform3fv(U.uCol, col); gl.uniform1f(U.uAlpha, a);
+  gl.drawArrays(gl.TRIANGLES, 0, PLANE.n);
+  gl.uniform1f(U.uHalo, 0);
+}
+setConn(null);
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>
