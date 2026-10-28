@@ -8,7 +8,7 @@
   :root {
     --bg: #0b0f1a;
     --panel: rgba(255, 255, 255, 0.04);
-    --panel-border: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.08);
     --text: #e8ecf5;
     --muted: #7d879c;
     --green: #22c55e;
@@ -16,9 +16,7 @@
     --red: #ef4444;
     --accent: #7c8cff;
   }
-
   * { box-sizing: border-box; }
-
   body {
     margin: 0;
     min-height: 100vh;
@@ -30,210 +28,119 @@
       var(--bg);
     padding: 24px 16px 48px;
   }
-
-  .container { max-width: 960px; margin: 0 auto; }
+  .container { max-width: 1000px; margin: 0 auto; }
 
   /* ---------- Header ---------- */
   header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 24px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 24px;
   }
   .brand { display: flex; align-items: center; gap: 12px; }
   .logo {
-    width: 44px; height: 44px; border-radius: 12px;
-    display: grid; place-items: center;
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
     background: linear-gradient(135deg, #7c8cff, #22c55e);
-    box-shadow: 0 8px 24px rgba(124, 140, 255, 0.35);
-    font-size: 22px;
+    box-shadow: 0 8px 24px rgba(124, 140, 255, 0.35); font-size: 22px;
   }
-  h1 { margin: 0; font-size: 26px; letter-spacing: 0.3px; }
+  h1 { margin: 0; font-size: 26px; }
   .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-
   button#btn {
-    appearance: none;
-    border: none;
-    cursor: pointer;
-    padding: 12px 20px;
-    border-radius: 999px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #0b0f1a;
-    background: linear-gradient(135deg, #a5b4ff, #7c8cff);
+    appearance: none; border: none; cursor: pointer;
+    padding: 12px 20px; border-radius: 999px; font-size: 15px; font-weight: 600;
+    color: #0b0f1a; background: linear-gradient(135deg, #a5b4ff, #7c8cff);
     box-shadow: 0 6px 20px rgba(124, 140, 255, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
   }
-  button#btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(124, 140, 255, 0.45); }
-  button#btn:active { transform: translateY(0); }
-  button#btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+  button#btn:hover { transform: translateY(-1px); }
+  button#btn:disabled { opacity: 0.6; cursor: default; transform: none; }
 
-  /* ---------- Status hero ---------- */
+  /* ---------- Hero ---------- */
   .hero {
-    position: relative;
-    overflow: hidden;
-    border-radius: 20px;
-    padding: 28px;
-    margin-bottom: 20px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    backdrop-filter: blur(12px);
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    transition: background 0.4s ease, border-color 0.4s ease;
+    position: relative; overflow: hidden; border-radius: 20px; padding: 26px;
+    margin-bottom: 18px; background: var(--panel); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
   }
   .hero::before {
-    content: "";
-    position: absolute; inset: 0;
-    background: var(--glow, transparent);
-    opacity: 0.25;
-    transition: background 0.4s ease;
-    pointer-events: none;
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.22;
+    background: linear-gradient(120deg, var(--tone, #475069), transparent);
+    transition: background 0.4s;
   }
   .orb {
-    position: relative;
-    flex: 0 0 auto;
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    background: var(--tone, #475069);
-    box-shadow: 0 0 0 0 var(--tone, #475069);
-    animation: pulse 2s infinite;
-    transition: background 0.4s ease;
+    position: relative; flex: 0 0 auto; width: 68px; height: 68px; border-radius: 50%;
+    background: var(--tone, #475069); animation: pulse 2s infinite;
   }
   @keyframes pulse {
     0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone, #475069) 60%, transparent); }
-    70%  { box-shadow: 0 0 0 22px transparent; }
+    70%  { box-shadow: 0 0 0 20px transparent; }
     100% { box-shadow: 0 0 0 0 transparent; }
   }
-  .hero-text { position: relative; min-width: 0; }
-  .hero-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
-  #status {
-    font-size: 30px;
-    font-weight: 700;
-    margin-top: 4px;
-    color: var(--tone, var(--text));
-    transition: color 0.4s ease;
-  }
-  #status.GREEN  { --tone: var(--green);  --glow: linear-gradient(120deg, var(--green), transparent); }
-  #status.YELLOW { --tone: var(--yellow); --glow: linear-gradient(120deg, var(--yellow), transparent); }
-  #status.RED    { --tone: var(--red);    --glow: linear-gradient(120deg, var(--red), transparent); }
-  .hero.GREEN  { --tone: var(--green);  --glow: linear-gradient(120deg, var(--green), transparent); }
-  .hero.YELLOW { --tone: var(--yellow); --glow: linear-gradient(120deg, var(--yellow), transparent); }
-  .hero.RED    { --tone: var(--red);    --glow: linear-gradient(120deg, var(--red), transparent); }
   .hero.RED .orb { animation: alarm 0.8s infinite; }
-  @keyframes alarm {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.08); }
-  }
-
+  @keyframes alarm { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  .hero-text { position: relative; min-width: 0; flex: 1; }
+  .hero-label { font-size: 12px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  #status { font-size: 28px; font-weight: 700; margin-top: 4px; color: var(--tone, var(--text)); }
+  #reason { font-size: 16px; color: var(--muted); margin-top: 4px; }
   .conn {
-    display: inline-flex; align-items: center; gap: 8px;
-    margin-top: 10px; font-size: 13px; color: var(--muted);
+    position: relative; display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--muted); margin-top: 10px;
   }
-  .conn i {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted); display: inline-block;
-  }
+  .conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
   .conn.on i { background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .last { color: var(--muted); font-size: 13px; }
 
-  /* ---------- Metric grid ---------- */
+  /* ---------- Sections ---------- */
+  h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin: 22px 0 10px; letter-spacing: 0.5px; }
   .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 14px;
-    margin-bottom: 20px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;
   }
   .card {
-    position: relative;
-    padding: 18px;
-    border-radius: 16px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    backdrop-filter: blur(10px);
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    padding: 16px 18px; border-radius: 16px; background: var(--panel);
+    border: 1px solid var(--border); transition: transform 0.2s, border-color 0.2s;
   }
   .card:hover { transform: translateY(-2px); border-color: rgba(124, 140, 255, 0.35); }
-  .card .icon { font-size: 20px; margin-bottom: 8px; }
-  .card .name { font-size: 13px; color: var(--muted); }
-  .card .value {
-    font-size: 34px;
-    font-weight: 700;
-    margin-top: 4px;
-    font-variant-numeric: tabular-nums;
-    transition: color 0.3s;
+  .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .name { font-size: 13px; color: var(--muted); }
+  .icon { font-size: 18px; }
+  .value {
+    font-size: 32px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums;
   }
-  .card .unit { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
-  .bar {
-    margin-top: 12px;
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.07);
-    overflow: hidden;
-  }
+  .unit { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .bar { margin-top: 10px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; }
   .bar > span {
-    display: block;
-    height: 100%;
-    width: 0%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #7c8cff, #a5b4ff);
-    transition: width 0.4s ease;
+    display: block; height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, #7c8cff, #a5b4ff); transition: width 0.4s;
   }
+  .spark { width: 100%; height: 40px; margin-top: 8px; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
 
-  .card.wide { grid-column: span 2; }
-  @media (max-width: 560px) { .card.wide { grid-column: span 1; } }
-
-  .reason-value {
-    font-size: 20px !important;
-    line-height: 1.4;
-    min-height: 34px;
+  /* ---------- Health ---------- */
+  .health { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .chip {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border);
+    font-size: 14px;
   }
+  .badge {
+    font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #0b0f1a;
+    background: var(--muted);
+  }
+  .badge.ok { background: var(--green); }
+  .badge.bad { background: var(--red); color: #fff; }
 
   /* ---------- Log ---------- */
-  .panel {
-    border-radius: 16px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    overflow: hidden;
-  }
-  .panel-head {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--panel-border);
-    font-size: 14px; color: var(--muted);
-  }
-  .dots { display: flex; gap: 6px; }
-  .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.12); }
+  .panel { border-radius: 16px; background: var(--panel); border: 1px solid var(--border); overflow: hidden; }
+  .panel-head { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--muted); }
   pre#log {
-    margin: 0;
-    padding: 14px 18px;
-    height: 220px;
-    overflow: auto;
-    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: #a9b4cc;
-    white-space: pre-wrap;
-    word-break: break-all;
+    margin: 0; padding: 14px 18px; height: 200px; overflow: auto;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.6;
+    color: #a9b4cc; white-space: pre-wrap; word-break: break-all;
   }
-  pre#log:empty::before {
-    content: "รอข้อมูลจาก ESP32...";
-    color: var(--muted);
-  }
+  pre#log:empty::before { content: "รอข้อมูลจาก ESP32..."; color: var(--muted); }
 
-  footer {
-    margin-top: 24px;
-    text-align: center;
-    font-size: 12px;
-    color: var(--muted);
-  }
+  footer { margin-top: 24px; text-align: center; font-size: 12px; color: var(--muted); }
 
   @media (max-width: 480px) {
-    #status { font-size: 24px; }
-    .card .value { font-size: 28px; }
-    .hero { padding: 22px; }
+    #status { font-size: 22px; }
+    .value { font-size: 28px; }
   }
 </style>
 </head>
@@ -255,52 +162,22 @@
     <div class="orb"></div>
     <div class="hero-text">
       <div class="hero-label">Machine Status</div>
-      <div id="status" class="GREEN">ยังไม่เชื่อมต่อ</div>
+      <div id="status">ยังไม่เชื่อมต่อ</div>
+      <div id="reason">-</div>
       <div class="conn" id="conn"><i></i><span>ออฟไลน์</span></div>
     </div>
+    <div class="last" id="last">-</div>
   </section>
 
-  <section class="grid">
-    <div class="card">
-      <div class="icon">⚙️</div>
-      <div class="name">รอบหมุน</div>
-      <div class="value"><span id="rpm">-</span><span class="unit">RPM</span></div>
-      <div class="bar"><span id="rpmBar"></span></div>
-    </div>
+  <h2>ค่าเซนเซอร์</h2>
+  <section class="grid" id="sensors"></section>
 
-    <div class="card">
-      <div class="icon">⚡</div>
-      <div class="name">กระแส</div>
-      <div class="value"><span id="cur">-</span><span class="unit">A</span></div>
-      <div class="bar"><span id="curBar"></span></div>
-    </div>
+  <h2>สถานะอุปกรณ์</h2>
+  <section class="health" id="health"></section>
 
-    <div class="card">
-      <div class="icon">🌡️</div>
-      <div class="name">อุณหภูมิมอเตอร์</div>
-      <div class="value"><span id="motC">-</span><span class="unit">°C</span></div>
-      <div class="bar"><span id="motBar"></span></div>
-    </div>
-
-    <div class="card">
-      <div class="icon">📳</div>
-      <div class="name">การสั่น</div>
-      <div class="value"><span id="acc">-</span><span class="unit">m/s²</span></div>
-      <div class="bar"><span id="accBar"></span></div>
-    </div>
-
-    <div class="card wide">
-      <div class="icon">🔎</div>
-      <div class="name">สาเหตุ</div>
-      <div class="value reason-value" id="reason">-</div>
-    </div>
-  </section>
-
+  <h2>ข้อมูลดิบ</h2>
   <section class="panel">
-    <div class="panel-head">
-      <span>ข้อมูลดิบจากเซนเซอร์</span>
-      <div class="dots"><span></span><span></span><span></span></div>
-    </div>
+    <div class="panel-head">บรรทัดล่าสุดจาก Serial</div>
     <pre id="log"></pre>
   </section>
 
@@ -309,28 +186,60 @@
 
 <script>
 const BAUD = 115200;   // ต้องตรงกับ Serial.begin() ในเฟิร์มแวร์
+const HISTORY = 60;    // จำนวนจุดกราฟย้อนหลัง
 
-// ขอบเขตสำหรับแสดงแถบความคืบหน้า (ปรับตามเครื่องจริง)
-const RANGE = {
-  rpm:  { max: 3000 },
-  cur:  { max: 20 },
-  motC: { min: 20, max: 100 },
-  acc:  { max: 10 },
-};
+// ตำแหน่งคอลัมน์ตาม CSV ที่ ESP32 พิมพ์ (นับจาก 0)
+// 1 accRms | 2 airC | 3 hum | 4 knock | 5 tcrtTotal | 6 rpm | 7 currentA | 8 motorC
+// 9 dhtOk | 10 mpuOk | 11 dsOk | 12 acsOk | 13 tcrtD0 | 14 swD0 | 15 acsZeroMv | 16 status | 17 reason
+const SENSORS = [
+  { key: 'acc',   idx: 1, label: 'การสั่น · MPU6050',         unit: 'm/s²', icon: '📳', min: 0,  max: 10,   dec: 2 },
+  { key: 'motC',  idx: 8, label: 'อุณหภูมิมอเตอร์ · DS18B20', unit: '°C',   icon: '🌡️', min: 20, max: 100,  dec: 1 },
+  { key: 'rpm',   idx: 6, label: 'รอบหมุน · TCRT5000',        unit: 'RPM',  icon: '⚙️', min: 0,  max: 3000, dec: 0 },
+  { key: 'cur',   idx: 7, label: 'กระแส · ACS712',            unit: 'A',    icon: '⚡', min: 0,  max: 20,   dec: 2 },
+  { key: 'airC',  idx: 2, label: 'อุณหภูมิอากาศ · DHT22',     unit: '°C',   icon: '🌤️', min: 0,  max: 50,   dec: 1 },
+  { key: 'hum',   idx: 3, label: 'ความชื้น · DHT22',          unit: '%',    icon: '💧', min: 0,  max: 100,  dec: 1 },
+  { key: 'knock', idx: 4, label: 'การเคาะ · SW420 (ต่อวินาที)', unit: 'ครั้ง', icon: '🔨', min: 0,  max: 20,   dec: 0 },
+];
 
+const HEALTH = [
+  { label: 'MPU6050 (การสั่น)',  idx: 10 },
+  { label: 'DHT22 (อากาศ)',      idx: 9 },
+  { label: 'DS18B20 (มอเตอร์)',  idx: 11 },
+  { label: 'ACS712 (กระแส)',     idx: 12 },
+];
+
+const history = {};
+SENSORS.forEach(s => history[s.key] = []);
+
+// ---------- สร้างการ์ดและชิป ----------
+function buildUI() {
+  document.getElementById('sensors').innerHTML = SENSORS.map(s => `
+    <div class="card">
+      <div class="card-head"><span class="name">${s.label}</span><span class="icon">${s.icon}</span></div>
+      <div class="value"><span id="v-${s.key}">—</span><span class="unit">${s.unit}</span></div>
+      <div class="bar"><span id="b-${s.key}"></span></div>
+      <svg class="spark" id="s-${s.key}" viewBox="0 0 100 40" preserveAspectRatio="none">
+        <polyline points=""></polyline>
+      </svg>
+    </div>`).join('');
+
+  document.getElementById('health').innerHTML = HEALTH.map(h => `
+    <div class="chip">
+      <span>${h.label}</span>
+      <span class="badge" id="h-${h.idx}">—</span>
+    </div>`).join('');
+}
+
+// ---------- การเชื่อมต่อ ----------
 const btn = document.getElementById('btn');
 btn.onclick = connect;
+buildUI();
 
 function setConnected(on) {
   document.getElementById('conn').classList.toggle('on', on);
   document.querySelector('#conn span').textContent = on ? 'เชื่อมต่อแล้ว' : 'ออฟไลน์';
   btn.textContent = on ? 'เชื่อมต่อแล้ว ✓' : 'เชื่อมต่อ ESP32';
   btn.disabled = on;
-}
-
-function setBar(id, value, min, max) {
-  const pct = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
-  document.getElementById(id).style.width = pct + '%';
 }
 
 async function connect() {
@@ -354,9 +263,8 @@ async function connect() {
       buf += value;
       let i;
       while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i).trim();
+        handleLine(buf.slice(0, i).trim());
         buf = buf.slice(i + 1);
-        handleLine(line);
       }
     }
   } catch (err) {
@@ -366,35 +274,62 @@ async function connect() {
   }
 }
 
+// ---------- ประมวลผลบรรทัด ----------
 function handleLine(line) {
-  // ข้ามบรรทัดข้อความ (#...) และบรรทัดหัวตาราง
   if (!line || line[0] === '#' || line.startsWith('ms,')) return;
-
   const f = line.split(',');
   if (f.length < 18) return;
 
-  // ลำดับคอลัมน์ตามเอกสาร: 1=accRms 6=rpm 7=currentA 8=motorC 16=status 17=reason
+  // ค่าเซนเซอร์และกราฟ
+  SENSORS.forEach(s => {
+    const raw = f[s.idx];
+    const v = parseFloat(raw);
+    const valid = raw !== 'NaN' && !isNaN(v);
+    document.getElementById('v-' + s.key).textContent = valid ? v.toFixed(s.dec) : '—';
+
+    const pct = valid ? Math.max(0, Math.min(100, (v - s.min) / (s.max - s.min) * 100)) : 0;
+    document.getElementById('b-' + s.key).style.width = pct + '%';
+
+    if (valid) {
+      const h = history[s.key];
+      h.push(v);
+      if (h.length > HISTORY) h.shift();
+      drawSpark(s.key, h);
+    }
+  });
+
+  // สถานะอุปกรณ์
+  HEALTH.forEach(h => {
+    const on = f[h.idx] === '1';
+    const el = document.getElementById('h-' + h.idx);
+    el.textContent = on ? 'ปกติ' : 'ผิดพลาด';
+    el.className = 'badge ' + (on ? 'ok' : 'bad');
+  });
+
+  // สถานะรวม
   const status = f[16];
-
-  document.getElementById('acc').textContent  = f[1];
-  document.getElementById('rpm').textContent  = f[6];
-  document.getElementById('cur').textContent  = f[7];
-  document.getElementById('motC').textContent = f[8];
-  document.getElementById('reason').textContent = f[17];
-
-  setBar('accBar', +f[1], 0, RANGE.acc.max);
-  setBar('rpmBar', +f[6], 0, RANGE.rpm.max);
-  setBar('curBar', +f[7], 0, RANGE.cur.max);
-  setBar('motBar', +f[8], RANGE.motC.min, RANGE.motC.max);
-
   const hero = document.getElementById('hero');
-  const el = document.getElementById('status');
   hero.className = 'hero ' + status;
-  el.className = status;
-  el.textContent = 'สถานะ: ' + status;
+  hero.style.setProperty('--tone',
+    status === 'RED' ? 'var(--red)' : status === 'YELLOW' ? 'var(--yellow)' : 'var(--green)');
+  document.getElementById('status').textContent = 'สถานะ: ' + status;
+  document.getElementById('reason').textContent = f[17];
+  document.getElementById('last').textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH');
 
-  const log = document.getElementById('log');
-  log.textContent = line + '\n' + log.textContent.slice(0, 2000);
+  document.getElementById('log').textContent = line + '\n' + document.getElementById('log').textContent.slice(0, 2000);
+}
+
+// ---------- กราฟเส้นเล็ก ----------
+function drawSpark(key, arr) {
+  if (arr.length < 2) return;
+  const lo = Math.min(...arr), hi = Math.max(...arr);
+  const span = hi - lo || 1;
+  const pts = arr.map((v, i) => {
+    const x = (i / (HISTORY - 1)) * 100;
+    const y = 38 - ((v - lo) / span) * 36;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  document.querySelector('#s-' + key + ' polyline').setAttribute('points', pts);
 }
 </script>
 </body>
