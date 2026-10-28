@@ -108,7 +108,10 @@
       <div class="logo">🛡️</div>
       <div><h1>VibeGuard</h1><p class="subtitle">ระบบเฝ้าระวังเครื่องจักรแบบเรียลไทม์</p></div>
     </div>
-    <button id="btnConnect" class="primary">เชื่อมต่อ ESP32</button>
+    <div class="tools">
+      <button id="btnReset" disabled>รีเซ็ตบอร์ด</button>
+      <button id="btnConnect" class="primary">เชื่อมต่อ ESP32</button>
+    </div>
   </header>
 
   <section id="hero" class="hero">
@@ -236,6 +239,25 @@ $('health').innerHTML = HEALTH.map(h => `<div class="chip"><span>${h.label}</spa
 // ===== เชื่อมต่อ =====
 let port = null, reader = null, writer = null, lines = 0, lastRateT = Date.now();
 let recording = false, recRows = [], lastStatus = null;
+let gotData = false, connectedAt = 0;
+
+// เชื่อมต่อแล้วแต่ไม่มีข้อมูล → บอกสาเหตุบนหน้าจอ
+setInterval(() => {
+  if (!port || gotData || !connectedAt || Date.now() - connectedAt < 4000) return;
+  $('status').textContent = 'เชื่อมต่อแล้ว แต่ยังไม่มีข้อมูล';
+  $('reason').textContent = 'กดปุ่ม "รีเซ็ตบอร์ด" · ถ้ายังไม่ขึ้น ดูข้อความในช่อง "ข้อความจาก ESP32" ด้านล่าง';
+}, 1000);
+
+async function resetBoard() {
+  if (!port) return;
+  try {
+    await port.setSignals({ dataTerminalReady: false, requestToSend: true });   // EN = LOW (กดรีเซ็ต)
+    await new Promise(r => setTimeout(r, 120));
+    await port.setSignals({ dataTerminalReady: false, requestToSend: false });  // ปล่อย → บูตปกติ
+    log('> รีเซ็ตบอร์ดแล้ว รอข้อความตอนเปิดเครื่อง...');
+    connectedAt = Date.now(); gotData = false;
+  } catch (e) { log('# รีเซ็ตจากหน้าเว็บไม่ได้ ให้กดปุ่ม EN บนบอร์ดแทน'); }
+}
 
 $('btnConnect').onclick = async () => { port ? await disconnect() : await connect(); };
 
@@ -244,6 +266,10 @@ async function connect() {
   try {
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: BAUD });
+    // บอร์ด ESP32 ส่วนใหญ่ใช้สาย DTR/RTS กดปุ่ม EN/BOOT ให้อัตโนมัติ ถ้าปล่อยค่าเริ่มต้นไว้ บอร์ดอาจค้างอยู่ในสถานะรีเซ็ต
+    // จึงปล่อยทั้งสองสาย = บอร์ดรีสตาร์ตแล้วทำงานปกติ (จะเห็นข้อความตอนเปิดเครื่องในช่องข้อความ)
+    try { await port.setSignals({ dataTerminalReady: false, requestToSend: false }); } catch (e) {}
+    gotData = false; connectedAt = Date.now();
     const enc = new TextEncoderStream(); enc.readable.pipeTo(port.writable); writer = enc.writable.getWriter();
     const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(() => {}); reader = dec.readable.getReader();
     setConn(true);
@@ -271,7 +297,10 @@ function setConn(on) {
   document.querySelector('#conn span').textContent = on ? 'เชื่อมต่อแล้ว' : 'ออฟไลน์';
   $('btnConnect').textContent = on ? 'ตัดการเชื่อมต่อ' : 'เชื่อมต่อ ESP32';
   document.querySelectorAll('[data-cmd]').forEach(b => b.disabled = !on);
+  $('btnReset').disabled = !on;
+  if (!on) { $('status').textContent = 'ยังไม่เชื่อมต่อ'; $('reason').textContent = 'กด "เชื่อมต่อ ESP32" แล้วเลือกพอร์ตของบอร์ด'; }
 }
+$('btnReset').onclick = resetBoard;
 setConn(false);
 
 document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = async () => {
@@ -287,9 +316,18 @@ function num(s) { const v = parseFloat(s); return Number.isFinite(v) ? v : NaN; 
 function handleLine(line) {
   if (!line) return;
   if (line.startsWith('ms,')) return;
-  if (line[0] === '#') { log(line); return; }
+  if (line[0] === '#') {
+    log(line);
+    if (line.includes('ไม่พบ MPU6050')) { $('status').textContent = 'ESP32 หยุดทำงาน: ไม่พบ MPU6050'; $('reason').textContent = 'เช็กสาย MPU6050: VCC 3V3 · GND · SDA GPIO21 · SCL GPIO22 แล้วกดรีเซ็ตบอร์ด'; }
+    return;
+  }
   const f = line.split(',');
-  if (f.length < 18) { log(line); return; }      // บรรทัดดิบ 6 แกน (โหมด f) หรือข้อความอื่น
+  if (f.length < 18) {
+    log(line);
+    if (!gotData && /VibeGuard ทดสอบเซนเซอร์|= MPU6050/.test(line)) { $('status').textContent = 'บอร์ดนี้ยังเป็นโค้ดทดสอบ'; $('reason').textContent = 'อัปโหลด VibeGuard_v2.ino ลงบอร์ดก่อน แล้วเชื่อมต่อใหม่'; }
+    return;
+  }
+  gotData = true;
   lines++;
 
   const d = {}; for (const k in C) d[k] = (k === 'status' || k === 'reason') ? f[C[k]] : num(f[C[k]]);
