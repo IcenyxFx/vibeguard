@@ -3,155 +3,184 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VibeGuard 3D</title>
+<title>VibeGuard</title>
 <!--
-  VibeGuard Dashboard 3D (Web Serial)
+  VibeGuard Dashboard (Web Serial) · ดีไซน์ "แผงควบคุมเครื่องจักร"
   - เปิดไฟล์นี้ใน Chrome หรือ Edge บนคอม → กด "เชื่อมต่อ ESP32" → เลือกพอร์ตของบอร์ด
   - ปิด Serial Monitor ของ Arduino IDE ก่อน (พอร์ตใช้ได้ทีละโปรแกรม)
-  - อ่านได้ทั้ง 2 เฟิร์มแวร์ (รู้เองอัตโนมัติ):
-      VibeGuard_v2.ino  : ms,accRms,axialRms,radialRms,gyroRms,swRate,rpm,currentA,motorC,ambC,hum,slot,zAcc,zGyro,zCur,tempRise,status,reason
-      VibeGuard_web.ino : ms,accRms,airC,hum,knock,tcrtTotal,rpm,currentA,motorC,dhtOk,mpuOk,dsOk,acsOk,tcrtD0,swD0,acsZeroMv,status,reason
+  - อ่านได้ทั้ง VibeGuard_v2.ino และ VibeGuard_web.ino (รู้เองอัตโนมัติ)
   - ปุ่ม "โหมดสาธิต" = ข้อมูลจำลอง ใช้ซ้อมพรีเซนต์/อัดวิดีโอได้โดยไม่ต้องต่อบอร์ด
-  - ภาพ 3 มิติวาดด้วย WebGL ล้วน ไม่ต้องโหลดไลบรารี ใช้ได้แม้ไม่มีเน็ต
+  - ภาพ 3 มิติวาดด้วย WebGL ล้วน ไม่ต้องโหลดไลบรารี ฟอนต์โหลดจาก Google Fonts ถ้าไม่มีเน็ตจะใช้ฟอนต์ในเครื่อง
 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #070b14; --panel: rgba(16,22,38,0.78); --panel2: rgba(255,255,255,0.035); --border: rgba(255,255,255,0.09);
-    --text: #e8ecf5; --muted: #8b95aa; --green: #22c55e; --yellow: #facc15; --red: #ef4444;
-    --blue: #60a5fa; --gray: #64748b; --accent: #7c8cff; --tone: var(--gray);
+    --page: #DADDD8; --panel: #F3F4F0; --panel2: #E8EAE5; --line: #C4C9C3; --ink: #22272A; --muted: #5C656A;
+    --blue: #1F6EA6; --green: #2E9E4F; --amber: #E9A100; --red: #D3242A; --hazard: #F2C200; --housing: #2B3033;
+    --tone: var(--muted);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
-  body { color: var(--text); background: var(--bg); font-family: "Noto Sans Thai", "Sarabun", "Segoe UI", system-ui, sans-serif; }
-  button { appearance: none; border: 1px solid var(--border); cursor: pointer; font: inherit; color: var(--text);
-           background: var(--panel2); border-radius: 999px; padding: 7px 13px; font-size: 13px; white-space: nowrap; }
-  button:hover:not(:disabled) { border-color: rgba(124,140,255,0.55); }
-  button:disabled { opacity: 0.4; cursor: default; }
-  button.primary { border: none; padding: 9px 16px; font-weight: 600; color: #0b0f1a; background: linear-gradient(135deg, #a5b4ff, #7c8cff); }
-  button.on { background: rgba(124,140,255,0.22); border-color: rgba(124,140,255,0.6); }
+  body { color: var(--ink); background: var(--page); font: 15px/1.5 "IBM Plex Sans Thai", "Leelawadee UI", "Sarabun", "Noto Sans Thai", system-ui, sans-serif;
+         font-variant-numeric: tabular-nums; }
+  button { appearance: none; font: inherit; color: var(--ink); cursor: pointer; border: 1px solid var(--line); background: var(--panel);
+           border-radius: 8px; padding: 7px 12px; font-size: 14px; white-space: nowrap; }
+  button:hover:not(:disabled) { border-color: var(--ink); }
+  button:disabled { opacity: .4; cursor: default; }
+  button:focus-visible, .sc:focus-visible, summary:focus-visible, .tag:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn-dark { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600; }
+  .btn-dark:hover:not(:disabled) { background: #000; }
 
-  .app { display: grid; grid-template-columns: 1fr 380px; grid-template-rows: auto 1fr; height: 100vh; }
+  .app { display: grid; grid-template-columns: 1fr 420px; grid-template-rows: auto 1fr; height: 100vh; }
   header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-           padding: 10px 16px; border-bottom: 1px solid var(--border); background: rgba(7,11,20,0.9); }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; background: linear-gradient(135deg, #7c8cff, #22c55e); }
-  h1 { margin: 0; font-size: 19px; } .subtitle { margin: 0; color: var(--muted); font-size: 12px; }
-  .tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+           padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
   /* ===== ฉาก 3 มิติ ===== */
-  .stage { position: relative; overflow: hidden; min-height: 300px;
-           background: radial-gradient(800px 500px at 50% 30%, #131c33 0%, #070b14 70%); }
+  .stage { position: relative; overflow: hidden; min-height: 320px;
+           background:
+             linear-gradient(var(--page), transparent 30%),
+             repeating-linear-gradient(0deg, transparent 0 39px, rgba(34,39,42,.06) 39px 40px),
+             repeating-linear-gradient(90deg, transparent 0 39px, rgba(34,39,42,.06) 39px 40px), #E6E8E4; }
   #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
   #gl:active { cursor: grabbing; }
   #labels { position: absolute; inset: 0; pointer-events: none; }
-  .tag { position: absolute; left: 0; top: 0; transform: translate(-50%, calc(-100% - 14px)); pointer-events: auto; cursor: pointer;
-         padding: 5px 10px 6px; border-radius: 10px; background: rgba(10,14,26,0.82); border: 1px solid var(--border);
-         backdrop-filter: blur(6px); font-size: 12px; line-height: 1.25; white-space: nowrap; transition: border-color .2s, opacity .2s; }
-  .tag::after { content: ""; position: absolute; left: 50%; bottom: -14px; width: 1px; height: 14px; background: rgba(255,255,255,0.35); }
-  .tag::before { content: ""; position: absolute; left: calc(50% - 3px); bottom: -17px; width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted)); }
+  .tag { position: absolute; left: 0; top: 0; transform: translate(-50%, calc(-100% - 16px)); pointer-events: auto; cursor: pointer;
+         padding: 5px 10px 6px; border-radius: 6px; background: #fff; border: 1px solid var(--ink);
+         font-size: 12px; line-height: 1.25; white-space: nowrap; box-shadow: 0 1px 0 rgba(34,39,42,.15); }
+  .tag::after { content: ""; position: absolute; left: 50%; bottom: -16px; width: 1px; height: 16px; background: var(--ink); }
+  .tag::before { content: ""; position: absolute; left: calc(50% - 3px); bottom: -19px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); }
   .tag .tn { color: var(--muted); font-size: 11px; display: flex; align-items: center; gap: 6px; }
-  .tag .tn i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted)); }
-  .tag .tv { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .tag .tn i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .tag.ok .tn i { background: var(--green); } .tag.bad .tn i { background: var(--red); }
+  .tag .tv { font-weight: 700; font-size: 15px; }
   .tag .tv small { font-weight: 500; color: var(--muted); font-size: 11px; margin-left: 3px; }
-  .tag.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .tag.bad { --dot: var(--red); } .tag.ok { --dot: var(--green); }
+  .tag.sel { background: var(--ink); color: #fff; } .tag.sel .tn, .tag.sel .tv small { color: #C9CED0; }
   .tag.hidden { opacity: 0; pointer-events: none; }
   .ov { position: absolute; display: flex; gap: 6px; flex-wrap: wrap; }
-  .ov.tl { left: 14px; top: 14px; flex-direction: column; align-items: flex-start; }
-  .ov.tr { right: 14px; top: 14px; justify-content: flex-end; max-width: 60%; }
-  .ov.bl { left: 14px; bottom: 12px; font-size: 12px; color: var(--muted); }
-  .ov.bc { left: 50%; bottom: 44px; transform: translateX(-50%); justify-content: center; background: rgba(10,14,26,0.8);
-           border: 1px solid var(--border); border-radius: 999px; padding: 6px; align-items: center; }
-  .ov.bc span { font-size: 12px; color: var(--muted); padding: 0 6px; }
-  .ov button { background: rgba(10,14,26,0.75); backdrop-filter: blur(6px); }
-  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px; border-radius: 999px;
-          background: rgba(10,14,26,0.82); border: 1px solid var(--tone); backdrop-filter: blur(6px); }
-  .pill i { width: 14px; height: 14px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 14px var(--tone); }
-  .pill b { font-size: 18px; color: var(--tone); }
-  .RED .pill i { animation: alarm .8s infinite; }
-  @keyframes alarm { 0%,100% { transform: scale(1); } 50% { transform: scale(1.35); } }
-  .rpmnote { font-size: 11px; color: var(--muted); background: rgba(10,14,26,0.7); padding: 3px 8px; border-radius: 6px; }
+  .ov.tl { left: 16px; top: 14px; }
+  .ov.tr { right: 16px; top: 14px; justify-content: flex-end; max-width: 64%; }
+  .ov.bl { left: 16px; bottom: 14px; font-size: 13px; color: var(--muted); }
+  .ov.bc { left: 50%; bottom: 46px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line);
+           border-radius: 10px; padding: 6px; align-items: center; }
+  .ov.bc span { font-size: 13px; color: var(--muted); padding: 0 6px; }
+  .rpmnote { font-size: 12px; color: var(--muted); }
+  .pill { display: none; }
 
-  /* ===== แผงขวา ===== */
-  aside { overflow-y: auto; border-left: 1px solid var(--border); background: rgba(9,13,24,0.96); padding: 14px 14px 30px; }
-  h2 { font-size: 12px; color: var(--muted); font-weight: 600; margin: 18px 0 8px; letter-spacing: .3px; }
-  .hero { position: relative; overflow: hidden; border-radius: 16px; padding: 16px; background: var(--panel2); border: 1px solid var(--border); }
-  .hero::before { content: ""; position: absolute; inset: 0; opacity: 0.2; background: linear-gradient(120deg, var(--tone), transparent 70%); pointer-events: none; }
-  .hero > * { position: relative; }
-  .hero-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
-  #status { font-size: 24px; font-weight: 700; margin-top: 2px; color: var(--tone); }
-  #reason { font-size: 14px; margin-top: 2px; }
-  .meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  /* ===== แผงควบคุม ===== */
+  aside { overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); }
+  .hazard { height: 14px; display: none;
+            background: repeating-linear-gradient(-45deg, var(--hazard) 0 14px, var(--ink) 14px 28px); }
+  body[data-st="RED"] .hazard { display: block; }
+  .block { padding: 18px 20px; border-bottom: 1px solid var(--line); }
+  h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+  .hint { margin: -6px 0 12px; font-size: 13px; color: var(--muted); }
+
+  /* ไฟทาวเวอร์ */
+  .status-head { display: grid; grid-template-columns: 64px 1fr; gap: 18px; align-items: center; }
+  .tower { background: var(--housing); border-radius: 10px; padding: 8px; display: grid; gap: 7px; justify-items: center; position: relative; }
+  .tower::after { content: ""; position: absolute; bottom: -12px; left: 50%; width: 14px; height: 12px; margin-left: -7px; background: var(--housing); }
+  .lamp { width: 46px; height: 46px; border-radius: 50%; background: #3B4145; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); transition: background .25s, box-shadow .25s; }
+  body[data-st="RED"] .lamp.r { background: var(--red); box-shadow: 0 0 22px var(--red), inset 0 -4px 0 rgba(0,0,0,.2); animation: blink .9s steps(2, start) infinite; }
+  body[data-st="YELLOW"] .lamp.y { background: var(--amber); box-shadow: 0 0 22px var(--amber), inset 0 -4px 0 rgba(0,0,0,.2); }
+  body[data-st="GREEN"] .lamp.g { background: var(--green); box-shadow: 0 0 22px var(--green), inset 0 -4px 0 rgba(0,0,0,.2); }
+  body[data-st="LEARNING"] .lamp.g { background: var(--blue); box-shadow: 0 0 18px var(--blue); animation: blink 1.4s steps(2, start) infinite; }
+  @keyframes blink { 50% { background: #3B4145; box-shadow: none; } }
+  #status { font-size: 34px; font-weight: 700; line-height: 1.1; color: var(--tone); letter-spacing: -.01em; }
+  #reason { font-size: 15px; margin-top: 6px; }
+  .meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .meta b { font-weight: 500; color: var(--ink); }
   .conn { display: inline-flex; align-items: center; gap: 6px; }
-  .conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .conn.on i { background: var(--green); box-shadow: 0 0 8px var(--green); }
-  .conn.demo i { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
+  .conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .conn.on i { background: var(--green); } .conn.demo i { background: var(--blue); }
 
-  .card { padding: 12px 14px; border-radius: 14px; background: var(--panel2); border: 1px solid var(--border); }
-  .learn b { font-size: 14px; } .learn .name { margin-top: 2px; }
-  .learn button { width: 100%; margin-top: 10px; }
-  .lbar { margin-top: 8px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; }
+  /* ปุ่มสอนค่าปกติ แบบปุ่มกดเครื่องจักร */
+  .learn { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  #btnNormal { padding: 14px 16px; border-radius: 12px; border: none; background: var(--green); color: #fff; font-size: 17px; font-weight: 600;
+               box-shadow: inset 0 -4px 0 rgba(0,0,0,.22); }
+  #btnNormal:hover:not(:disabled) { filter: brightness(1.06); }
+  #btnNormal:active:not(:disabled) { box-shadow: inset 0 -1px 0 rgba(0,0,0,.22); transform: translateY(2px); }
+  .lbar { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; }
   .lbar span { display: block; height: 100%; width: 0; background: var(--blue); transition: width .3s; }
 
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .sc { padding: 10px 12px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
-  .sc:hover { border-color: rgba(124,140,255,0.4); } .sc.sel { border-color: var(--accent); }
-  .sc .name { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 4px; }
-  .name { font-size: 12px; color: var(--muted); }
-  .sc .value { font-size: 20px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
-  .unit { font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 3px; }
-  .spark { width: 100%; height: 26px; margin-top: 4px; display: block; }
-  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  /* แถวค่าเซนเซอร์ */
+  #cards { display: grid; }
+  .sc { display: grid; grid-template-columns: 1fr auto 84px; align-items: center; gap: 12px; padding: 9px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+  .sc:first-child { border-top: none; }
+  .sc:hover { background: var(--panel2); }
+  .sc.sel { background: var(--ink); color: #fff; } .sc.sel .name span:last-child, .sc.sel .unit { color: #C9CED0; } .sc.sel polyline { stroke: #fff; }
+  .sc .name { display: grid; font-size: 14px; } .sc .name span:last-child { font-size: 12px; color: var(--muted); }
+  .sc .value { font-size: 22px; font-weight: 700; text-align: right; }
+  .unit { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .spark { width: 84px; height: 26px; display: block; }
+  .spark polyline { fill: none; stroke: var(--blue); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
-  .zrow { display: grid; grid-template-columns: 82px 1fr 44px; align-items: center; gap: 8px; margin: 7px 0; font-size: 13px; }
-  .ztrack { position: relative; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.07); }
-  .zfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--green); width: 0; transition: width .3s; }
+  /* z-score */
+  .zrow { display: grid; grid-template-columns: 96px 1fr 48px; align-items: center; gap: 10px; margin: 9px 0; font-size: 14px; }
+  .ztrack { position: relative; height: 10px; border-radius: 5px; background: var(--panel2); }
+  .zfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--green); width: 0; transition: width .3s; }
   .zmark { position: absolute; top: -4px; bottom: -4px; width: 2px; }
-  .zmark.y { background: var(--yellow); left: 37.5%; } .zmark.r { background: var(--red); left: 75%; }
-  .znum { text-align: right; font-variant-numeric: tabular-nums; }
-  #znote { font-size: 12px; color: var(--muted); display: none; }
+  .zmark.y { background: var(--amber); left: 37.5%; } .zmark.r { background: var(--red); left: 75%; }
+  .znum { text-align: right; font-weight: 600; }
+  #znote { font-size: 13px; color: var(--muted); display: none; }
 
+  details { border-bottom: 1px solid var(--line); }
+  summary { padding: 14px 20px; font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--muted); font-weight: 400; }
+  details[open] summary::after { content: "−"; }
+  .dbody { padding: 0 20px 18px; }
   .cmds { display: flex; flex-wrap: wrap; gap: 6px; }
-  .panel { border-radius: 14px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; }
-  .panel-head { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
-  pre { margin: 0; padding: 10px 14px; height: 170px; overflow: auto; font: 11px/1.6 ui-monospace, Menlo, Consolas, monospace; color: #a9b4cc; white-space: pre-wrap; word-break: break-all; }
-  #events { margin: 0; padding: 2px 14px; max-height: 170px; overflow: auto; }
-  #events li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; list-style: none; }
-  #events:empty::before { content: "ยังไม่มีการแจ้งเตือน"; color: var(--muted); font-size: 13px; display: block; padding: 8px 0; }
-  footer { margin-top: 18px; text-align: center; font-size: 11px; color: var(--muted); }
+  #events { margin: 0; padding: 0; max-height: 180px; overflow: auto; }
+  #events li { padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; list-style: none; }
+  #events:empty::before { content: "ยังไม่มีการแจ้งเตือน"; color: var(--muted); font-size: 13px; display: block; }
+  .loghead { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin: 14px 0 6px; }
+  pre { margin: 0; padding: 10px 12px; height: 160px; overflow: auto; background: var(--housing); color: #D8DDDF; border-radius: 8px;
+        font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+  .name { color: var(--muted); font-size: 13px; }
 
-  @media (max-width: 900px) {
-    .app { grid-template-columns: 1fr; grid-template-rows: auto 56vh auto; height: auto; }
-    aside { border-left: none; border-top: 1px solid var(--border); overflow: visible; }
-    .app { grid-template-rows: auto 62vh auto; }
+  @media (prefers-reduced-motion: reduce) { .lamp { animation: none !important; } }
+  @media (max-width: 960px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto 58vh auto; height: auto; }
+    aside { display: contents; }
+    .status-wrap { order: -1; }
+    header { grid-row: 1; } .status-wrap { grid-row: 2; } .stage { grid-row: 3; } .rest { grid-row: 4; }
+    .status-wrap, .rest { background: var(--panel); }
     .ov.tr { max-width: none; left: 10px; right: 10px; top: auto; bottom: 10px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; }
     .ov.bl, .rpmnote, .ov.bc span { display: none; }
-    .ov.bc { bottom: 54px; left: 10px; right: 10px; transform: none; flex-wrap: nowrap; overflow-x: auto; border-radius: 14px; justify-content: flex-start; }
+    .ov.bc { bottom: 54px; left: 10px; right: 10px; transform: none; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; }
     .tag { padding: 3px 7px 4px; } .tag .tn { font-size: 10px; } .tag .tv { font-size: 12px; }
-    .pill b { font-size: 15px; }
+    .status-head { grid-template-columns: 52px 1fr; } .lamp { width: 36px; height: 36px; } #status { font-size: 28px; }
   }
 </style>
 </head>
-<body>
+<body data-st="OFF">
 <div class="app">
   <header>
     <div class="brand">
-      <div class="logo">🛡️</div>
-      <div><h1>VibeGuard 3D</h1><p class="subtitle">ระบบเฝ้าระวังเครื่องจักรแบบเรียลไทม์</p></div>
+      <h1>VibeGuard</h1>
+      <p class="subtitle">เฝ้าระวังแท่นทดสอบมอเตอร์</p>
     </div>
     <div class="tools">
-      <button id="btnDemo">▶ โหมดสาธิต</button>
+      <button id="btnGraph">หน้าต่างกราฟ</button>
+      <button id="btnDemo">โหมดสาธิต</button>
       <button id="btnReset" disabled>รีเซ็ตบอร์ด</button>
-      <button id="btnConnect" class="primary">เชื่อมต่อ ESP32</button>
+      <button id="btnConnect" class="btn-dark">เชื่อมต่อ ESP32</button>
     </div>
   </header>
 
   <section class="stage" id="stage">
-    <canvas id="gl"></canvas>
+    <canvas id="gl" aria-label="ภาพ 3 มิติของแท่นทดสอบ ขยับตามค่าจริง"></canvas>
     <div id="labels"></div>
     <div class="ov tl">
       <div class="pill" id="pill"><i></i><b id="pillText">ยังไม่เชื่อมต่อ</b></div>
-      <span class="rpmnote" id="rpmnote">ภาพจานหมุนช้ากว่าจริง 15 เท่า ให้ตาเห็นทัน</span>
+      <span class="rpmnote" id="rpmnote">จานในภาพหมุนช้ากว่าจริง 15 เท่า</span>
     </div>
     <div class="ov tr">
       <button data-view="iso" class="on">มุมเฉียง</button>
@@ -161,7 +190,7 @@
       <button id="btnSpin">หมุนรอบ</button>
       <button id="btnLabels" class="on">ป้ายค่า</button>
     </div>
-    <div class="ov bl">ลากเพื่อหมุน · เลื่อนลูกกลิ้งเพื่อซูม · กดป้ายเพื่อซูมเข้าเซนเซอร์</div>
+    <div class="ov bl">ลากเพื่อหมุน เลื่อนลูกกลิ้งเพื่อซูม กดป้ายเพื่อดูเซนเซอร์ใกล้ ๆ</div>
     <div class="ov bc" id="scen" hidden>
       <span>จำลองอาการ</span>
       <button data-sc="normal" class="on">ปกติ</button>
@@ -173,56 +202,69 @@
   </section>
 
   <aside>
-    <section id="hero" class="hero">
-      <div class="hero-label">Machine Status</div>
-      <div id="status">ยังไม่เชื่อมต่อ</div>
-      <div id="reason">กด "เชื่อมต่อ ESP32" แล้วเลือกพอร์ตของบอร์ด</div>
-      <div class="meta">
-        <span class="conn" id="conn"><i></i><span>ออฟไลน์</span></span>
-        <span id="slot">baseline: -</span>
-        <span id="fmt">เฟิร์มแวร์: -</span>
-        <span id="last">-</span>
-      </div>
-    </section>
-
-    <h2>สอนค่าปกติ</h2>
-    <div class="card learn">
-      <b>ตอนนี้เครื่องทำงานปกติใช่ไหม?</b>
-      <div class="name">กดแล้วให้เครื่องหมุนค้างไว้ ~30 วินาที ระบบจะจำค่านี้เป็น "ค่าปกติ" (เก็บได้ 3 รอบความเร็ว เลือกช่องให้เอง)</div>
-      <div class="lbar"><span id="lfill"></span></div>
-      <button id="btnNormal" class="primary" data-cmd="n">✓ ตอนนี้เครื่องปกติ</button>
+    <div class="status-wrap">
+      <div class="hazard" aria-hidden="true"></div>
+      <section id="hero" class="block">
+        <div class="status-head">
+          <div class="tower" aria-hidden="true"><i class="lamp r"></i><i class="lamp y"></i><i class="lamp g"></i></div>
+          <div>
+            <div id="status" role="status" aria-live="polite">ยังไม่เชื่อมต่อ</div>
+            <div id="reason">กด "เชื่อมต่อ ESP32" แล้วเลือกพอร์ตของบอร์ด</div>
+          </div>
+        </div>
+        <div class="meta">
+          <span>การเชื่อมต่อ</span><b class="conn" id="conn"><i></i><span>ออฟไลน์</span></b>
+          <span>ค่าปกติที่ใช้</span><b id="slot">-</b>
+          <span>เฟิร์มแวร์</span><b id="fmt">-</b>
+          <span>อัปเดตล่าสุด</span><b id="last">-</b>
+        </div>
+      </section>
+      <section class="block learn">
+        <h2>สอนค่าปกติ</h2>
+        <p class="hint">กดตอนเครื่องทำงานปกติ แล้วปล่อยให้หมุนค้างไว้ราว 30 วินาที ระบบจะจำค่านี้ไว้เทียบ</p>
+        <button id="btnNormal" data-cmd="n">ตอนนี้เครื่องปกติ</button>
+        <div class="lbar"><span id="lfill"></span></div>
+      </section>
     </div>
 
-    <h2>ค่าเซนเซอร์ · กดการ์ดเพื่อดูตำแหน่งบนแท่น</h2>
-    <section class="grid" id="cards"></section>
-
-    <h2>ห่างจากค่าปกติ (z-score) · ขีดเหลือง = 3 · ขีดแดง = 6</h2>
-    <div class="card" id="zbox"></div>
-
-    <h2>คำสั่งไปที่ ESP32</h2>
-    <div class="cmds">
-      <button data-cmd="b1">เก็บ baseline 1</button>
-      <button data-cmd="b2">เก็บ baseline 2</button>
-      <button data-cmd="b3">เก็บ baseline 3</button>
-      <button data-cmd="p">ดูตาราง baseline</button>
-      <button data-cmd="z">ตั้งศูนย์กระแส</button>
-      <button data-cmd="r" data-confirm="ลบ baseline ทั้งหมด?">ลบ baseline</button>
+    <div class="rest">
+      <section class="block">
+        <h2>ค่าจากเซนเซอร์</h2>
+        <p class="hint">กดที่แถวเพื่อดูตำแหน่งเซนเซอร์บนแท่น</p>
+        <div id="cards"></div>
+      </section>
+      <section class="block">
+        <h2>ห่างจากค่าปกติ</h2>
+        <p class="hint">ขีดเหลือง = 3 เท่า ขีดแดง = 6 เท่าของการแกว่งตอนปกติ (z-score)</p>
+        <div id="zbox"></div>
+      </section>
+      <details>
+        <summary>คำสั่งอื่น</summary>
+        <div class="dbody">
+          <div class="cmds">
+            <button data-cmd="b1">เก็บค่าปกติช่อง 1</button>
+            <button data-cmd="b2">เก็บค่าปกติช่อง 2</button>
+            <button data-cmd="b3">เก็บค่าปกติช่อง 3</button>
+            <button data-cmd="p">ดูตารางค่าปกติ</button>
+            <button data-cmd="z">ตั้งศูนย์กระแส</button>
+            <button data-cmd="r" data-confirm="ลบค่าปกติที่เก็บไว้ทั้งหมด?">ลบค่าปกติทั้งหมด</button>
+          </div>
+          <div class="cmds" style="margin-top:12px; align-items:center">
+            <button id="btnRec">เริ่มบันทึก CSV</button>
+            <button id="btnSave" disabled>ดาวน์โหลด CSV</button>
+            <span id="recInfo" class="name"></span>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>บันทึกเหตุการณ์</summary>
+        <div class="dbody">
+          <ul id="events"></ul>
+          <div class="loghead"><span>ข้อความจาก ESP32</span><span id="rate">-</span></div>
+          <pre id="log"></pre>
+        </div>
+      </details>
     </div>
-    <div class="cmds" style="margin-top:8px; align-items:center">
-      <button id="btnRec">● เริ่มบันทึก CSV</button>
-      <button id="btnSave" disabled>ดาวน์โหลด CSV</button>
-      <span id="recInfo" class="name"></span>
-    </div>
-
-    <h2>บันทึกการแจ้งเตือน</h2>
-    <div class="panel"><ul id="events"></ul></div>
-
-    <h2>ข้อความจาก ESP32</h2>
-    <div class="panel">
-      <div class="panel-head"><span>บรรทัดล่าสุดจาก Serial</span><span id="rate">-</span></div>
-      <pre id="log"></pre>
-    </div>
-    <footer>VibeGuard · ESP32 Predictive Maintenance · ใช้กับ VibeGuard_v2.ino หรือ VibeGuard_web.ino</footer>
   </aside>
 </div>
 
@@ -251,11 +293,11 @@ const CARDS = [
 ];
 const ZS = [ { key:'zAcc', label:'การสั่น' }, { key:'zGyro', label:'การโยก' }, { key:'zCur', label:'กระแส' } ];
 const STATUS = {
-  GREEN:         { th:'ปกติ',               tone:'#22c55e' },
-  YELLOW:        { th:'เฝ้าระวัง',          tone:'#facc15' },
-  RED:           { th:'อันตราย',            tone:'#ef4444' },
-  'NO-BASELINE': { th:'ยังไม่มี baseline',  tone:'#64748b' },
-  LEARNING:      { th:'กำลังเก็บค่าปกติ',   tone:'#60a5fa' },
+  GREEN:         { th:'ปกติ',               tone:'#2E9E4F' },
+  YELLOW:        { th:'เฝ้าระวัง',          tone:'#A66F00' },
+  RED:           { th:'อันตราย',            tone:'#D3242A' },
+  'NO-BASELINE': { th:'ยังไม่มีค่าปกติ',    tone:'#5C656A' },
+  LEARNING:      { th:'กำลังเก็บค่าปกติ',   tone:'#1F6EA6' },
 };
 const REASON = {
   '-':'ทุกค่าอยู่ในช่วงปกติ', vibration:'การสั่นผิดปกติ (เช็กความสมดุล/น็อตหลวม)', current:'กระแสสูงกว่าปกติ (ฝืดหรือโหลดเพิ่ม)',
@@ -266,7 +308,7 @@ const REASON = {
 const $ = id => document.getElementById(id);
 const hist = {}; CARDS.forEach(c => hist[c.key] = []);
 $('cards').innerHTML = CARDS.map(c => `
-  <div class="sc" data-sensor="${c.sensor}">
+  <div class="sc" tabindex="0" data-sensor="${c.sensor}">
     <div class="name"><span>${c.label}</span><span>${SENSOR_NAME(c.sensor)}</span></div>
     <div class="value"><span id="v-${c.key}">—</span><span class="unit">${c.unit}</span></div>
     <svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline id="s-${c.key}" points=""/></svg>
@@ -290,7 +332,7 @@ let gotData = false, connectedAt = 0, fmt = null;   // fmt: 'v2' | 'web'
 setInterval(() => {
   if (!port || gotData || !connectedAt || Date.now() - connectedAt < 4000) return;
   $('status').textContent = 'เชื่อมต่อแล้ว แต่ยังไม่มีข้อมูล';
-  $('reason').textContent = 'กดปุ่ม "รีเซ็ตบอร์ด" · ถ้ายังไม่ขึ้น ดูช่อง "ข้อความจาก ESP32" ด้านล่าง';
+  $('reason').textContent = 'กดปุ่ม "รีเซ็ตบอร์ด" ถ้ายังไม่ขึ้น เปิดดู "บันทึกเหตุการณ์" ด้านล่าง';
 }, 1000);
 
 async function resetBoard() {
@@ -342,7 +384,7 @@ function setConn(mode) {   // 'serial' | 'demo' | null
   $('conn').className = 'conn' + (mode === 'serial' ? ' on' : mode === 'demo' ? ' demo' : '');
   document.querySelector('#conn span').textContent = mode === 'serial' ? 'เชื่อมต่อแล้ว' : mode === 'demo' ? 'โหมดสาธิต (ข้อมูลจำลอง)' : 'ออฟไลน์';
   $('btnConnect').textContent = mode === 'serial' ? 'ตัดการเชื่อมต่อ' : 'เชื่อมต่อ ESP32';
-  $('btnDemo').textContent = mode === 'demo' ? '■ หยุดสาธิต' : '▶ โหมดสาธิต';
+  $('btnDemo').textContent = mode === 'demo' ? 'หยุดสาธิต' : 'โหมดสาธิต';
   $('btnDemo').classList.toggle('on', mode === 'demo');
   $('scen').hidden = mode !== 'demo';
   document.querySelectorAll('[data-cmd]').forEach(b => b.disabled = !on);
@@ -390,7 +432,7 @@ function handleLine(line) {
   if (line.startsWith('ms,')) { fmt = line.includes('airC') ? 'web' : 'v2'; return; }
   if (line[0] === '#') {
     log(line);
-    if (line.includes('ไม่พบ MPU6050') && fmt !== 'web') { $('status').textContent = 'ไม่พบ MPU6050'; $('reason').textContent = 'เช็กสาย MPU6050: VCC 3V3 · GND · SDA GPIO21 · SCL GPIO22 แล้วกดรีเซ็ตบอร์ด'; }
+    if (line.includes('ไม่พบ MPU6050') && fmt !== 'web') { $('status').textContent = 'ไม่พบ MPU6050'; $('reason').textContent = 'เช็กสาย MPU6050 (VCC 3V3, GND, SDA GPIO21, SCL GPIO22) แล้วกดรีเซ็ตบอร์ด'; }
     return;
   }
   const f = line.split(',');
@@ -401,7 +443,7 @@ function handleLine(line) {
   }
   gotData = true; lines++;
   const d = parseFields(f);
-  $('fmt').textContent = 'เฟิร์มแวร์: ' + (fmt === 'v2' ? 'VibeGuard_v2' : 'VibeGuard_web');
+  $('fmt').textContent = fmt === 'v2' ? 'VibeGuard_v2' : 'VibeGuard_web';
   $('znote').style.display = fmt === 'web' ? 'block' : 'none';
 
   CARDS.forEach(c => {
@@ -421,20 +463,25 @@ function handleLine(line) {
   const st = STATUS[d.status] || { th: d.status, tone: '#64748b' };
   const lm = /^learn(\d)-(\d+)\/(\d+)$/.exec(d.reason || '');
   $('lfill').style.width = lm ? (lm[2] / lm[3] * 100) + '%' : '0';
-  $('btnNormal').textContent = lm ? `กำลังเก็บค่าปกติ ช่อง ${lm[1]} · ${Math.round(lm[2] / lm[3] * 100)}%` : '✓ ตอนนี้เครื่องปกติ';
+  $('btnNormal').textContent = lm ? `กำลังเก็บค่าปกติ ช่อง ${lm[1]} (${Math.round(lm[2] / lm[3] * 100)}%)` : 'ตอนนี้เครื่องปกติ';
   const reasonText = d.status === 'LEARNING' ? (lm ? `กำลังเก็บค่าปกติลงช่อง ${lm[1]} (${lm[2]}/${lm[3]}) ให้เครื่องหมุนค้างไว้` : 'ให้เครื่องหมุนปกติค้างไว้ ~30 วินาที')
                    : d.status === 'NO-BASELINE' ? 'กด "ตอนนี้เครื่องปกติ" เพื่อสอนค่าปกติก่อน'
                    : (REASON[d.reason] || d.reason);
   $('status').textContent = st.th;
   $('reason').textContent = reasonText;
   setTone(st.tone, st.th, d.status);
-  $('slot').textContent = 'baseline: ' + (d.slot > 0 ? 'ช่อง ' + d.slot : fmt === 'web' ? '-' : 'ยังไม่มี');
-  $('last').textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH');
+  $('slot').textContent = d.slot > 0 ? 'ช่อง ' + d.slot : fmt === 'web' ? '-' : 'ยังไม่มี';
+  $('last').textContent = new Date().toLocaleTimeString('th-TH');
 
   if (lastStatus === 'LEARNING' && d.status !== 'LEARNING') addEvent(`บันทึกค่าปกติแล้ว${d.slot > 0 ? ' (ช่อง ' + d.slot + ')' : ''} ที่ ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM`, 'var(--blue)');
   if (d.status !== lastStatus && (d.status === 'YELLOW' || d.status === 'RED' || lastStatus === 'YELLOW' || lastStatus === 'RED'))
-    addEvent(`${st.th} · ${REASON[d.reason] || d.reason} · ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM · ${Number.isNaN(d.cur) ? '-' : d.cur.toFixed(2)} A`, st.tone);
+    addEvent(`${st.th}: ${REASON[d.reason] || d.reason}, ${Number.isNaN(d.rpm) ? '-' : d.rpm.toFixed(0)} RPM, ${Number.isNaN(d.cur) ? '-' : d.cur.toFixed(2)} A`, st.tone);
   lastStatus = d.status;
+
+  const row = { t: Date.now(), acc: d.acc, axial: d.axial, radial: d.radial, gyro: d.gyro, rpm: d.rpm, cur: d.cur, motC: d.motC, ambC: d.ambC,
+                zAcc: d.zAcc, zGyro: d.zGyro, zCur: d.zCur, status: d.status, reason: d.reason };
+  histRows.push(row); if (histRows.length > 2000) histRows.shift();
+  try { if (graphWin && !graphWin.closed && graphWin.vgPush) graphWin.vgPush(row); } catch (e) {}
 
   Object.assign(live, { rpm: Number.isNaN(d.rpm) ? 0 : d.rpm, acc: d.acc, gyro: d.gyro, cur: d.cur, motC: d.motC, ambC: d.ambC,
                         hum: d.hum, sw: d.sw, status: d.status, ok: d.ok, lastT: performance.now() });
@@ -445,14 +492,40 @@ function handleLine(line) {
   if (now - lastRateT > 3000) { $('rate').textContent = (lines / ((now - lastRateT) / 1000)).toFixed(1) + ' บรรทัด/วินาที'; lines = 0; lastRateT = now; }
 }
 
+// ----- หน้าต่างกราฟแยก (เปิดเป็นหน้าต่างใหม่ รับข้อมูลจากหน้านี้) -----
+const GRAPH_HTML = "<!DOCTYPE html>\n<html lang=\"th\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>VibeGuard กราฟ<\/title>\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap\" rel=\"stylesheet\">\n<style>\n  :root { --bg:#06101A; --panel:#0A1622; --line:#16314A; --text:#D6E6F5; --muted:#6F8BA3; --cyan:#3FD0FF; --amber:#FFB547;\n          --mag:#FF5FA2; --green:#3DDC84; --red:#FF4D4F; --tone:#6F8BA3; }\n  * { box-sizing: border-box; }\n  html, body { margin: 0; height: 100%; }\n  body { background: radial-gradient(1200px 700px at 70% -20%, #0D2238 0%, var(--bg) 60%); color: var(--text);\n         font: 14px/1.45 \"Chakra Petch\", \"Leelawadee UI\", \"Sarabun\", system-ui, sans-serif; font-variant-numeric: tabular-nums; }\n  button { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 12px; cursor: pointer; }\n  button:hover { border-color: var(--cyan); color: #fff; }\n  button.on { background: var(--cyan); color: #04121D; border-color: var(--cyan); font-weight: 600; }\n  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }\n  .wrap { display: grid; grid-template-rows: auto 1fr; height: 100vh; }\n  header { display: flex; align-items: center; gap: 18px; padding: 12px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }\n  .lamp { width: 16px; height: 16px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 14px var(--tone); flex: none; }\n  body[data-st=\"RED\"] .lamp { animation: pulse .8s infinite; }\n  @keyframes pulse { 50% { opacity: .35; } }\n  .st { display: flex; align-items: baseline; gap: 12px; min-width: 0; }\n  #st { font-size: 22px; font-weight: 700; color: var(--tone); }\n  #why { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n  .sp { flex: 1; }\n  .feed { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }\n  .feed i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }\n  .feed.live i { background: var(--green); box-shadow: 0 0 8px var(--green); }\n  .seg { display: flex; gap: 4px; }\n  main { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 12px; padding: 12px; min-height: 0; }\n  .p { position: relative; display: grid; grid-template-rows: auto 1fr; min-height: 220px; border: 1px solid var(--line); border-radius: 6px;\n       background: linear-gradient(180deg, rgba(63,208,255,.04), transparent 40%), var(--panel); overflow: hidden; }\n  .p::before { content: \"\"; position: absolute; left: 0; top: 0; width: 14px; height: 14px; border-left: 2px solid var(--cyan); border-top: 2px solid var(--cyan); opacity: .7; }\n  .p::after { content: \"\"; position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); opacity: .7; }\n  .ph { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 14px 0; }\n  .pt { font-size: 15px; font-weight: 600; }\n  .ps { font-size: 12px; color: var(--muted); }\n  .pv { text-align: right; }\n  .pv b { font-size: 30px; font-weight: 700; line-height: 1; }\n  .pv small { font-size: 13px; color: var(--muted); margin-left: 4px; }\n  .legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); padding: 2px 14px 0; flex-wrap: wrap; }\n  .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }\n  canvas { width: 100%; height: 100%; display: block; }\n  .cv { position: relative; min-height: 0; }\n  .tip { position: absolute; pointer-events: none; background: rgba(4,14,24,.92); border: 1px solid var(--cyan); border-radius: 4px;\n         padding: 6px 9px; font-size: 12px; white-space: nowrap; display: none; z-index: 2; }\n  .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 20px; pointer-events: none; }\n  @media (max-width: 1100px) { main { grid-template-columns: repeat(2, 1fr); grid-template-rows: none; overflow: auto; } .p { height: 280px; } }\n  @media (max-width: 640px) { main { grid-template-columns: 1fr; } }\n  @media (prefers-reduced-motion: reduce) { .lamp { animation: none !important; } }\n<\/style>\n<\/head>\n<body data-st=\"OFF\">\n<div class=\"wrap\">\n  <header>\n    <span class=\"lamp\"><\/span>\n    <div class=\"st\"><span id=\"st\">รอข้อมูล<\/span><span id=\"why\">กราฟจะขึ้นเมื่อหน้าหลักเริ่มรับข้อมูล<\/span><\/div>\n    <span class=\"sp\"><\/span>\n    <span class=\"feed\" id=\"feed\"><i><\/i><span id=\"feedTxt\">ยังไม่มีข้อมูล<\/span><\/span>\n    <div class=\"seg\" role=\"group\" aria-label=\"ช่วงเวลา\">\n      <button data-win=\"30\">30 วินาที<\/button><button data-win=\"60\" class=\"on\">1 นาที<\/button><button data-win=\"300\">5 นาที<\/button>\n    <\/div>\n    <button id=\"pause\">หยุดภาพ<\/button>\n    <button id=\"full\">เต็มจอ<\/button>\n    <button id=\"closeG\" hidden>ปิดกราฟ<\/button>\n  <\/header>\n  <main id=\"grid\"><\/main>\n<\/div>\n<script>\nconst COL = { cyan:'#3FD0FF', amber:'#FFB547', mag:'#FF5FA2', green:'#3DDC84', red:'#FF4D4F', orange:'#FF7A45', dim:'#7FA7C4' };\nconst ST = { GREEN:['ปกติ','#3DDC84'], YELLOW:['เฝ้าระวัง','#FFB547'], RED:['อันตราย','#FF4D4F'], 'NO-BASELINE':['ยังไม่มีค่าปกติ','#6F8BA3'], LEARNING:['กำลังเก็บค่าปกติ','#3FD0FF'] };\nconst REASON = { '-':'ทุกค่าอยู่ในช่วงปกติ', vibration:'การสั่นผิดปกติ', current:'กระแสสูงกว่าปกติ', 'rpm-drop':'รอบตกจากปกติ', 'temp-rise':'อุณหภูมิมอเตอร์สูงขึ้น', 'motor-hot':'มอเตอร์ร้อนเกิน 70°C', overcurrent:'กระแสเกิน 2.5 A' };\nconst PANELS = [\n  { id:'vib',  title:'การสั่น', sub:'MPU6050', unit:'m/s²', dec:3, main:'acc', zero:true, series:[['acc','รวม',COL.cyan],['radial','ตั้งฉากเพลา',COL.amber],['axial','แนวเพลา',COL.dim]] },\n  { id:'gyro', title:'การโยก', sub:'MPU6050', unit:'°/s', dec:2, main:'gyro', zero:true, series:[['gyro','การโยก',COL.mag]] },\n  { id:'rpm',  title:'รอบหมุน', sub:'TCRT5000', unit:'RPM', dec:0, main:'rpm', series:[['rpm','รอบ',COL.green]], zero:true },\n  { id:'cur',  title:'กระแสมอเตอร์', sub:'ACS712', unit:'A', dec:3, main:'cur', series:[['cur','กระแส',COL.amber]], zero:true },\n  { id:'temp', title:'อุณหภูมิ', sub:'DS18B20 และ DHT22', unit:'°C', dec:1, main:'motC', series:[['motC','มอเตอร์',COL.orange],['ambC','อากาศ',COL.cyan]] },\n  { id:'z',    title:'ห่างจากค่าปกติ', sub:'z-score เส้นเหลือง 3 เส้นแดง 6', unit:'', dec:1, main:'zmax', series:[['zAcc','การสั่น',COL.cyan],['zGyro','การโยก',COL.mag],['zCur','กระแส',COL.amber]], zero:true, bands:true },\n];\nconst $ = id => document.getElementById(id);\n$('grid').innerHTML = PANELS.map(p => `\n  <section class=\"p\" id=\"p-${p.id}\">\n    <div>\n      <div class=\"ph\"><div><div class=\"pt\">${p.title}<\/div><div class=\"ps\">${p.sub}<\/div><\/div>\n        <div class=\"pv\"><b id=\"v-${p.id}\">—<\/b><small>${p.unit}<\/small><div class=\"ps\" id=\"mm-${p.id}\">&nbsp;<\/div><\/div><\/div>\n      <div class=\"legend\">${p.series.map(s => `<span><i style=\"background:${s[2]}\"><\/i>${s[1]}<\/span>`).join('')}<\/div>\n    <\/div>\n    <div class=\"cv\"><canvas id=\"c-${p.id}\"><\/canvas><div class=\"tip\" id=\"tip-${p.id}\"><\/div><div class=\"empty\" id=\"e-${p.id}\">ยังไม่มีข้อมูล กด \"เชื่อมต่อ ESP32\" หรือ \"โหมดสาธิต\" ที่หน้าหลัก<\/div><\/div>\n  <\/section>`).join('');\n\nlet data = [], events = [], winSec = 60, paused = false, lastT = 0, rateN = 0, rateT = Date.now();\nconst hover = {};\n\n// ===== รับข้อมูลจากหน้าหลัก =====\nwindow.vgInit = rows => { data = rows.slice(-2000); events = []; for (let i = 1; i < data.length; i++) if (data[i].status !== data[i - 1].status) events.push({ t: data[i].t, s: data[i].status }); if (data.length) applyStatus(data.at(-1)); };\nwindow.vgPush = d => {\n  const prev = data.at(-1);\n  data.push(d); if (data.length > 2000) data.shift();\n  if (prev && prev.status !== d.status) events.push({ t: d.t, s: d.status });\n  lastT = Date.now(); rateN++;\n  applyStatus(d);\n};\nfunction applyStatus(d) {\n  const s = ST[d.status] || [d.status || '-', '#6F8BA3'];\n  document.body.dataset.st = d.status || 'OFF';\n  document.documentElement.style.setProperty('--tone', s[1]);\n  $('st').textContent = s[0];\n  const lm = /^learn(\\d)-(\\d+)\\/(\\d+)$/.exec(d.reason || '');\n  $('why').textContent = lm ? `เก็บค่าปกติช่อง ${lm[1]}  ${Math.round(lm[2] / lm[3] * 100)}%` : (REASON[d.reason] || d.reason || '');\n}\nsetInterval(() => {\n  const live = Date.now() - lastT < 3000;\n  $('feed').classList.toggle('live', live);\n  const r = rateN / ((Date.now() - rateT) / 1000); rateN = 0; rateT = Date.now();\n  $('feedTxt').textContent = live ? `รับข้อมูลสด ${r.toFixed(1)} ครั้ง/วินาที` : (data.length ? 'ข้อมูลหยุดเข้า' : 'ยังไม่มีข้อมูล');\n}, 2000);\n\ndocument.querySelectorAll('[data-win]').forEach(b => b.onclick = () => { winSec = +b.dataset.win; document.querySelectorAll('[data-win]').forEach(x => x.classList.toggle('on', x === b)); });\n$('pause').onclick = () => { paused = !paused; $('pause').classList.toggle('on', paused); $('pause').textContent = paused ? 'เล่นต่อ' : 'หยุดภาพ'; };\nif (window.parent !== window) { $('closeG').hidden = false; $('closeG').onclick = () => window.parent.vgCloseGraph && window.parent.vgCloseGraph(); }\n$('full').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();\n\n// ===== วาดกราฟ =====\nconst val = (d, k) => k === 'zmax' ? Math.max(d.zAcc ?? NaN, d.zGyro ?? NaN, d.zCur ?? NaN) : d[k];\nfunction niceStep(span, n) { const raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }\nlet viewEnd = Date.now();\n\nfunction draw(p) {\n  const cv = $('c-' + p.id), box = cv.parentElement, dpr = Math.min(2, devicePixelRatio || 1);\n  const W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;\n  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }\n  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);\n  const L = 46, R = 12, T = 10, B = 24, pw = W - L - R, ph = H - T - B;\n  const t1 = viewEnd, t0 = t1 - winSec * 1000;\n  const rows = data.filter(d => d.t >= t0 - 2000);\n  // ช่วงแกน y\n  let lo = Infinity, hi = -Infinity;\n  rows.forEach(d => p.series.forEach(([k]) => { const v = d[k]; if (Number.isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));\n  const has = Number.isFinite(lo);\n  $('e-' + p.id).style.display = has ? 'none' : 'grid';\n  if (!has) { lo = 0; hi = 1; }\n  if (p.zero) lo = Math.min(0, lo);\n  if (p.bands) hi = Math.max(hi, 7);\n  if (hi - lo < 1e-6) { hi += 0.5; lo -= 0.5; }\n  const pad = (hi - lo) * 0.12; hi += pad; if (!p.zero) lo -= pad;\n  const step = niceStep(hi - lo, 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;\n  const X = t => L + (t - t0) / (t1 - t0) * pw, Y = v => T + (hi - v) / (hi - lo) * ph;\n\n  // เส้นกริด\n  g.font = '11px \"Chakra Petch\", sans-serif'; g.fillStyle = '#6F8BA3'; g.textAlign = 'right'; g.textBaseline = 'middle';\n  for (let v = lo; v <= hi + step / 2; v += step) {\n    const y = Y(v); g.strokeStyle = 'rgba(63,208,255,0.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke();\n    g.fillText(+v.toFixed(Math.max(0, -Math.floor(Math.log10(step)))), L - 6, y);\n  }\n  const ts = winSec <= 60 ? 10 : 60; g.textAlign = 'center'; g.textBaseline = 'top';\n  for (let s = 0; s <= winSec; s += ts) { const x = X(t1 - s * 1000); g.strokeStyle = 'rgba(63,208,255,0.06)'; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke();\n    g.fillText(s === 0 ? 'ตอนนี้' : `-${s >= 60 ? s / 60 + ' น.' : s + ' วิ'}`, Math.min(Math.max(x, L + 14), W - R - 18), T + ph + 6); }\n\n  // แถบเกณฑ์ z\n  if (p.bands) {\n    g.fillStyle = 'rgba(255,77,79,0.10)'; g.fillRect(L, T, pw, Y(6) - T);\n    g.fillStyle = 'rgba(255,181,71,0.07)'; g.fillRect(L, Y(6), pw, Y(3) - Y(6));\n    [[3, COL.amber], [6, COL.red]].forEach(([v, c]) => { g.strokeStyle = c; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke(); g.setLineDash([]); });\n  }\n  // เส้นบอกเวลาที่สถานะเปลี่ยน\n  events.filter(e => e.t >= t0 && e.t <= t1).forEach(e => { const c = (ST[e.s] || [0, '#6F8BA3'])[1], x = X(e.t);\n    g.strokeStyle = c; g.globalAlpha = .55; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;\n    g.fillStyle = c; g.beginPath(); g.moveTo(x - 4, T); g.lineTo(x + 4, T); g.lineTo(x, T + 6); g.fill(); });\n\n  // เส้นกราฟ (เส้นแรก = ตัวหลัก มีพื้นเรืองแสง)\n  g.save(); g.beginPath(); g.rect(L, T, pw, ph); g.clip();\n  p.series.slice().reverse().forEach(([k, , c], ri) => {\n    const isMain = ri === p.series.length - 1;\n    const pts = rows.filter(d => Number.isFinite(d[k])).map(d => [X(d.t), Y(d[k])]);\n    if (pts.length < 2) return;\n    if (isMain) {\n      const gr = g.createLinearGradient(0, T, 0, T + ph); gr.addColorStop(0, c + '55'); gr.addColorStop(1, c + '00');\n      g.fillStyle = gr; g.beginPath(); g.moveTo(pts[0][0], T + ph); pts.forEach(q => g.lineTo(q[0], q[1])); g.lineTo(pts.at(-1)[0], T + ph); g.fill();\n    }\n    g.strokeStyle = c; g.lineWidth = isMain ? 2 : 1.4; g.globalAlpha = isMain ? 1 : .85; g.shadowColor = c; g.shadowBlur = isMain ? 10 : 4;\n    g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.stroke();\n    g.shadowBlur = 0; g.globalAlpha = 1;\n    if (isMain) { const q = pts.at(-1); g.fillStyle = c; g.shadowColor = c; g.shadowBlur = 12; g.beginPath(); g.arc(q[0], q[1], 3.5, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0; }\n  });\n  g.restore();\n\n  // ค่าล่าสุด และ ต่ำสุด/สูงสุด ในช่วงที่ดู\n  const last = data.at(-1), mv = last ? val(last, p.main) : NaN;\n  $('v-' + p.id).textContent = Number.isFinite(mv) ? mv.toFixed(p.dec) : '—';\n  const vs = rows.filter(d => d.t >= t0).map(d => val(d, p.main)).filter(Number.isFinite);\n  $('mm-' + p.id).textContent = vs.length ? `ต่ำสุด ${Math.min(...vs).toFixed(p.dec)}  สูงสุด ${Math.max(...vs).toFixed(p.dec)}` : ' ';\n\n  // เส้นเล็งตามเมาส์\n  const h = hover[p.id], tip = $('tip-' + p.id);\n  if (h && h.x >= L && h.x <= W - R && rows.length) {\n    const tt = t0 + (h.x - L) / pw * (t1 - t0);\n    let best = rows[0]; rows.forEach(d => { if (Math.abs(d.t - tt) < Math.abs(best.t - tt)) best = d; });\n    const x = X(best.t); g.strokeStyle = 'rgba(214,230,245,.6)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke();\n    tip.innerHTML = `${new Date(best.t).toLocaleTimeString('th-TH')}<br>` + p.series.map(([k, n, c]) => `<span style=\"color:${c}\">●<\/span> ${n} <b>${Number.isFinite(best[k]) ? best[k].toFixed(p.dec) : '—'}<\/b>`).join('<br>');\n    tip.style.display = 'block'; tip.style.left = Math.min(x + 10, W - tip.offsetWidth - 4) + 'px'; tip.style.top = (T + 6) + 'px';\n  } else tip.style.display = 'none';\n}\nPANELS.forEach(p => { const cv = $('c-' + p.id);\n  cv.addEventListener('mousemove', e => { const r = cv.getBoundingClientRect(); hover[p.id] = { x: e.clientX - r.left }; });\n  cv.addEventListener('mouseleave', () => { hover[p.id] = null; }); });\n// ดึงข้อมูลย้อนหลังจากหน้าหลักตอนเปิด\ntry { const host = window.opener || (window.parent !== window ? window.parent : null); if (host && host.vgHist) vgInit(host.vgHist()); } catch (e) {}\n(function loop() { if (!paused) viewEnd = Date.now(); PANELS.forEach(draw); requestAnimationFrame(loop); })();\n<\/script>\n<\/body>\n<\/html>\n";
+const histRows = [];
+window.vgHist = () => histRows;
+let graphWin = null;
+$('btnGraph').onclick = () => {
+  if (graphWin && !graphWin.closed && !$('graphOverlay')) { graphWin.focus(); return; }
+  if ($('graphOverlay')) return;
+  let w = null;
+  if (window.top === window) { try { w = window.open('', 'vgGraphs', 'width=1400,height=860'); } catch (e) { w = null; } }
+  if (w) { w.document.open(); w.document.write(GRAPH_HTML); w.document.close(); graphWin = w; return; }
+  // เปิดหน้าต่างใหม่ไม่ได้ (ป๊อปอัปถูกบล็อก หรือเปิดไฟล์ในหน้าพรีวิว) → แสดงกราฟเต็มจอในหน้านี้แทน
+  const ov = document.createElement('div');
+  ov.id = 'graphOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#06101A';
+  const fr = document.createElement('iframe');
+  fr.style.cssText = 'width:100%;height:100%;border:0;display:block';
+  fr.title = 'กราฟ VibeGuard';
+  ov.appendChild(fr); document.body.appendChild(ov);
+  fr.srcdoc = GRAPH_HTML;
+  fr.onload = () => { graphWin = fr.contentWindow; };
+};
+window.vgCloseGraph = () => { const ov = $('graphOverlay'); if (ov) ov.remove(); graphWin = null; };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') window.vgCloseGraph(); });
+
 function setTone(tone, text, status) {
   document.documentElement.style.setProperty('--tone', tone);
   $('pillText').textContent = text;
+  document.body.dataset.st = status || 'OFF';
   $('stage').className = 'stage ' + (status || '');
 }
 function addEvent(text, color) {
   const li = document.createElement('li');
-  li.textContent = new Date().toLocaleTimeString('th-TH') + ' · ' + text;
+  li.textContent = new Date().toLocaleTimeString('th-TH') + '  ' + text;
   li.style.color = color;
   $('events').prepend(li);
 }
@@ -467,7 +540,7 @@ function log(text) { const el = $('log'); el.textContent = (text + '\n' + el.tex
 $('btnRec').onclick = () => {
   recording = !recording;
   if (recording) recRows = [];
-  $('btnRec').textContent = recording ? '■ หยุดบันทึก' : '● เริ่มบันทึก CSV';
+  $('btnRec').textContent = recording ? 'หยุดบันทึก' : 'เริ่มบันทึก CSV';
   $('btnSave').disabled = recording || recRows.length === 0;
   $('recInfo').textContent = recording ? '0 แถว' : (recRows.length ? recRows.length + ' แถว พร้อมดาวน์โหลด' : '');
 };
@@ -673,10 +746,10 @@ box(-27, 22, SH_Z + 23.9, 5, 5, 1, '#111', { group: 'shake' });
 box(-27, 22, SH_Z - 22.8, 32, 14, 1.6, '#1f4fb8', { id: 'sw' });
 cylX(-35, 22, SH_Z - 26, 3, 7, '#202226', { R: M4.Ry(Math.PI / 2) });
 box(-18, 24, SH_Z - 24.4, 6, 6, 3, '#3c7be8');
-// LM2596 (ตัวปรับรอบ) + ACS712
-box(62, 1, -78, 43, 2, 21, '#1d4fbf', { id: 'lm' });
-cylY(55, 2, -78, 6, 8, '#222');  cylY(70, 2, -73, 4, 10, '#16181c'); cylY(70, 2, -83, 4, 10, '#16181c');
-box(78, 6, -78, 9, 9, 6, '#2b67de');
+// รางถ่าน (ไฟมอเตอร์) + ACS712
+box(66, 4, -78, 58, 8, 34, '#1b1d22', { id: 'batt' });
+[-10.5, 10.5].forEach(dz => { add(CYL, chain(M4.T(66, 9, -78 + dz), M4.Rz(Math.PI / 2), M4.S(7, 50, 7)), '#c9a227', { spec: .7 });
+  add(CYL, chain(M4.T(92, 9, -78 + dz), M4.Rz(Math.PI / 2), M4.S(3, 2, 3)), '#d8dde5', { spec: 1 }); });
 box(62, 1, -40, 31, 2, 14, '#c62828', { id: 'acs' });
 box(52, 6, -40, 8, 9, 13, '#1f62d4'); box(64, 3, -40, 6, 3, 5, '#111');
 // เบรดบอร์ด + ESP32 + จอ OLED + LED 3 ดวง + DHT22 + โมดูล DS18B20
@@ -695,8 +768,6 @@ for (let i = 0; i < 5; i++) box(72, 30 - i * 3.6, 35.8, 11, 1.4, .6, '#9aa0aa');
 box(-2, 10, 72, 18, 2, 12, '#1f4fb8'); box(-6, 13, 72, 7, 5, 9, '#2f9c46');
 // สายไฟ
 const PWR = [[62, 3, -78], [40, 3, -78], [40, 3, -60], [52, 3, -40], [40, 3, -40], [40, 3, -66], [-55, 3, -66], [-55, 30, -66], [-55, SH_Y + 6, SH_Z]];
-tube([[100, 4, -78], [80, 4, -78]], 1.2, '#c62828');
-tube([[105, 3, -90], [100, 3, -82]], 2.2, '#111318');
 tube(PWR, 1, '#d63a3a');
 tube([[-55, SH_Y - 6, SH_Z], [-60, 30, -70], [-60, 3, -70], [62, 3, -70]], 1, '#1b1d22');
 tube([[-27, 22, SH_Z + 24], [-27, 12, 18], [-27, 10, 36]], .7, '#38bdf8');
@@ -713,12 +784,12 @@ const motorBase = rgb('#a7adb8');
 
 // ----- ป้ายค่าลอยในฉาก -----
 const TAGS = [
-  { id: 'mpu',  name: 'MPU6050 · การสั่น',     at: [-27, 34, SH_Z + 23], val: () => fmtV(live.acc, 3, 'm/s²') },
-  { id: 'tcrt', name: 'TCRT5000 · รอบหมุน',     at: [DISC_X + 9, SH_Y + TAPE_R + 16, SH_Z], val: () => fmtV(live.active ? live.rpm : NaN, 0, 'RPM') },
-  { id: 'ds',   name: 'DS18B20 · อุณหภูมิมอเตอร์', at: [-28, SH_Y + 20, SH_Z], val: () => fmtV(live.motC, 1, '°C') },
-  { id: 'acs',  name: 'ACS712 · กระแส',         at: [62, 6, -40], val: () => fmtV(live.cur, 3, 'A') },
-  { id: 'sw',   name: 'SW420 · แรงกระแทก',       at: [-27, 30, SH_Z - 23], val: () => fmtV(live.sw, 1, 'ครั้ง/วิ') },
-  { id: 'dht',  name: 'DHT22 · อากาศ',           at: [72, 37, 40], val: () => fmtV(live.ambC, 1, '°C') + ' · ' + fmtV(live.hum, 0, '%') },
+  { id: 'mpu',  name: 'การสั่น (MPU6050)',     at: [-27, 34, SH_Z + 23], val: () => fmtV(live.acc, 3, 'm/s²') },
+  { id: 'tcrt', name: 'รอบหมุน (TCRT5000)',     at: [DISC_X + 9, SH_Y + TAPE_R + 16, SH_Z], val: () => fmtV(live.active ? live.rpm : NaN, 0, 'RPM') },
+  { id: 'ds',   name: 'อุณหภูมิมอเตอร์ (DS18B20)', at: [-28, SH_Y + 20, SH_Z], val: () => fmtV(live.motC, 1, '°C') },
+  { id: 'acs',  name: 'กระแส (ACS712)',         at: [62, 6, -40], val: () => fmtV(live.cur, 3, 'A') },
+  { id: 'sw',   name: 'แรงกระแทก (SW420)',       at: [-27, 30, SH_Z - 23], val: () => fmtV(live.sw, 1, 'ครั้ง/วิ') },
+  { id: 'dht',  name: 'อากาศ (DHT22)',           at: [72, 37, 40], val: () => fmtV(live.ambC, 1, '°C') + '  ' + fmtV(live.hum, 0, '%') },
   { id: 'esp',  name: 'ESP32 + จอ OLED',         at: [-45, 15, 50], val: () => live.status ? (STATUS[live.status]?.th || live.status) : 'ออฟไลน์' },
 ];
 function fmtV(v, d, u) { return Number.isNaN(v) || v === undefined ? '—' : `${v.toFixed(d)}<small>${u}</small>`; }
